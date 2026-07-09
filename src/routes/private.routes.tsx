@@ -6,7 +6,9 @@ import { IAAssistant } from '@/pages/ia/IAAssistant';
 import { Notificacoes } from '@/pages/notificacoes/Notificacoes';
 import { PlanosAula } from '@/pages/planos/PlanosAula';
 import { ProfileView } from "@/pages/profile/ProfileView";
-import { ResourcesView } from "@/pages/resources/ResourcesView"
+import { ResourcesView } from "@/pages/resources/ResourcesView";
+import { Caderneta } from '@/pages/caderneta/Caderneta';
+import { Avaliacoes } from '@/pages/avaliacoes/Avaliacoes';
 
 export const privateRoutes = [
     { path: "dashboard", element: (
@@ -36,8 +38,20 @@ export const privateRoutes = [
         <PlanosAula />
     ) },
 
+    { path: "planos-aula", element: (
+        <PlanosAula />
+    ) },
+
+    { path: "avaliacoes", element: (
+        <Avaliacoes />
+    ) },
+
     { path: "notas", element: (
         <NotasPauta />
+    ) },
+
+    { path: "caderneta", element: (
+        <Caderneta />
     ) },
 
     { path: "recursos", element: (

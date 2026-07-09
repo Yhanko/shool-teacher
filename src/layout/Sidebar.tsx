@@ -1,43 +1,80 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import {
-  Home,
-  BookOpen,
-  GraduationCap,
-  MessageCircle,
-  Bell,
-  Calendar,
+import { 
+  Home, 
+  Users, 
+  Calendar, 
+  MessageCircle, 
+  Bell, 
+  Settings, 
+  LogOut, 
+  GraduationCap, 
+  User, 
+  Menu, 
   Bot,
-  Files,
+  ClipboardCheck,
+  BookOpen,
+  FileSignature,
+  FileText,
   ChevronLeft,
-  ChevronRight,
-  User
+  ChevronRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '@/store/authStore';
 
 interface SidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
 }
 
-const menuItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: Home },
-  { id: 'planos', label: 'Planos de Aula', icon: BookOpen },
-  { id: 'notas', label: 'Notas & Pauta', icon: GraduationCap },
-  { id: 'chat', label: 'Mensagens', icon: MessageCircle, badge: 3 },
-  { id: 'notificacoes', label: 'Notificações', icon: Bell, badge: 5 },
-  { id: 'atividades', label: 'Atividades', icon: Calendar },
-  { id: 'assistante', label: 'Assistente IA', icon: Bot },
-  { id: 'recursos', label: 'Recursos', icon: Files },
-  { id: 'perfil', label: 'Perfil', icon: User },
-];
+// Items are defined inside the component to access dynamic counts
 
 export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const navigate = useNavigate();
+  const logout = useAuthStore((state) => state.logout);
+  const user = useAuthStore((state) => state.user);
+
+  useEffect(() => {
+    if (user) {
+      import('@/services/api/axios').then(({ default: api }) => {
+        api.get('/notifications')
+          .then(res => {
+            const unread = (res.data || []).filter((n: any) => !n.isRead).length;
+            setUnreadNotifications(unread);
+          })
+          .catch(e => console.error('Failed to fetch notifications', e));
+
+        api.get('/messages/inbox')
+          .then(res => {
+            const unreadMsgs = (res.data || []).filter((chat: any) => 
+               chat.lastMessage && !chat.lastMessage.read && !chat.lastMessage.isSender
+            ).length;
+            setUnreadMessages(unreadMsgs);
+          })
+          .catch(e => console.error('Failed to fetch messages inbox', e));
+      });
+    }
+  }, [user]);
+
+  const menuItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: Home },
+    { id: 'notas', label: 'Notas & Pauta', icon: GraduationCap },
+    { id: 'chat', label: 'Mensagens', icon: MessageCircle, badge: (activeTab === 'chat') ? undefined : (unreadMessages > 0 ? unreadMessages : undefined) },
+    { id: 'notificacoes', label: 'Notificações', icon: Bell, badge: unreadNotifications > 0 ? unreadNotifications : undefined },
+    { id: 'atividades', label: 'Atividades', icon: Calendar },
+    { id: 'assistante', label: 'Assistente IA', icon: Bot },
+    { id: 'caderneta', label: 'Caderneta', icon: ClipboardCheck },
+    { id: 'planos-aula', label: 'Planos de Aula', icon: BookOpen },
+    { id: 'avaliacoes', label: 'Fichas de Avaliação', icon: FileSignature },
+    { id: 'recursos', label: 'Recursos', icon: FileText },
+    { id: 'perfil', label: 'Perfil', icon: User },
+  ];
 
   return (
     <div className={cn(
@@ -92,6 +129,20 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           ))}
         </nav>
       </ScrollArea>
+      
+      <div className="p-4 border-t">
+        <Button
+          variant="destructive"
+          className={cn(
+            "w-full justify-center h-10 bg-red-50 text-red-600 hover:bg-red-100 border-none shadow-none",
+            collapsed && "px-2"
+          )}
+          onClick={logout}
+        >
+          <LogOut className={cn("h-4 w-4", !collapsed && "mr-3")} />
+          {!collapsed && <span className="flex-1 text-left font-medium">Sair da Conta</span>}
+        </Button>
+      </div>
     </div>
   );
 }

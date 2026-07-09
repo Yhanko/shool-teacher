@@ -1,48 +1,82 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+"use client";
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import {
-  BookOpen,
-  Users,
-  ClipboardCheck,
-  TrendingUp,
-  Calendar,
-  MessageCircle,
-} from '../../lib/icons';
-import { turmas, planosAula, notificacoes, atividades } from '@/data/mockData';
+  BookOpen, Users, ClipboardCheck, TrendingUp, Loader2
+} from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
+import api from '@/services/api/axios';
 
-const notasData = [
-  { trimestre: '1º Trim', media: 15.2 },
-  { trimestre: '2º Trim', media: 16.8 },
-  { trimestre: '3º Trim', media: 17.1 }
-];
-
-const disciplinasData = [
-  { name: 'Matemática', value: 65, color: '#3b82f6' },
-  { name: 'Física', value: 35, color: '#10b981' }
-];
+interface ClassInfo {
+  id: string;
+  name: string;
+  academicLevel: string;
+  capacity?: number;
+  teachers?: { id: string; name: string }[];
+  _count?: { students: number };
+}
 
 export function Dashboard() {
-  const totalAlunos = turmas.reduce((acc, turma) => acc + turma.alunos.length, 0);
-  const planosAprovados = planosAula.filter(plano => plano.status === 'aprovado').length;
-  const notificacoesNaoLidas = notificacoes.filter(n => !n.lida).length;
-  const atividadesProximas = atividades.filter(a => new Date(a.data) > new Date()).length;
+  const user = useAuthStore((state) => state.user);
+  const [classes, setClasses] = useState<ClassInfo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [notifCount, setNotifCount] = useState(0);
+
+  useEffect(() => {
+    async function fetchData() {
+      if (!user) return;
+      try {
+        // Fetch teacher's classes
+        const classRes = await api.get(`/classes/teacher/${user.id}`);
+        setClasses(classRes.data || []);
+
+        // Fetch notifications count
+        try {
+          const notifRes = await api.get('/notifications');
+          const unread = notifRes.data?.filter((n: any) => !n.isRead) || [];
+          setNotifCount(unread.length);
+        } catch (_) { /* optional */ }
+      } catch (error) {
+        console.error('Failed to load dashboard data', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [user]);
+
+  const totalStudents = classes.reduce((acc, c) => acc + (c._count?.students || 0), 0);
+  const totalCapacity = classes.reduce((acc, c) => acc + (c.capacity || 0), 0);
+  const occupancyRate = totalCapacity > 0 ? Math.round((totalStudents / totalCapacity) * 100) : 0;
+
+  // Build chart data from classes
+  const chartData = classes.slice(0, 5).map(c => ({
+    turma: c.name,
+    alunos: c._count?.students || 0,
+  }));
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Cards de estatísticas */}
+      {/* Welcome banner */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl p-6 text-white">
+        <h2 className="text-2xl font-bold">Bem-vindo, {user?.name?.split(' ')[0] || 'Professor'}! 👋</h2>
+        <p className="mt-1 text-blue-100">Aqui está um resumo do seu painel de hoje.</p>
+      </div>
+
+      {/* Stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -50,200 +84,89 @@ export function Dashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalAlunos}</div>
-            <p className="text-xs text-muted-foreground">Em 3 turmas</p>
+            <div className="text-2xl font-bold">{totalStudents}</div>
+            <p className="text-xs text-muted-foreground">Em {classes.length} turma{classes.length !== 1 ? 's' : ''}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Planos de Aula</CardTitle>
+            <CardTitle className="text-sm font-medium">Turmas Atribuídas</CardTitle>
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{planosAprovados}/{planosAula.length}</div>
-            <p className="text-xs text-muted-foreground">Aprovados este mês</p>
+            <div className="text-2xl font-bold">{classes.length}</div>
+            <p className="text-xs text-muted-foreground">Turmas activas</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Notificações</CardTitle>
-            <MessageCircle className="h-4 w-4 text-muted-foreground" />
+            <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{notificacoesNaoLidas}</div>
+            <div className="text-2xl font-bold">{notifCount}</div>
             <p className="text-xs text-muted-foreground">Não lidas</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Atividades</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Ocupação das Turmas</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{atividadesProximas}</div>
-            <p className="text-xs text-muted-foreground">Próximas atividades</p>
+            <div className="text-2xl font-bold">{occupancyRate}%</div>
+            <Progress value={occupancyRate} className="mt-2" />
           </CardContent>
         </Card>
       </div>
 
+      {/* Chart + class list */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Gráfico de Desempenho */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center">
-              <TrendingUp className="mr-2 h-5 w-5" />
-              Desempenho por Trimestre
-            </CardTitle>
-            <CardDescription>Média das notas dos alunos</CardDescription>
+            <CardTitle>Alunos por Turma</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={notasData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="trimestre" />
-                <YAxis domain={[0, 20]} />
-                <Tooltip />
-                <Bar dataKey="media" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="turma" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="alunos" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-center text-muted-foreground py-8">Nenhuma turma atribuída ainda.</p>
+            )}
           </CardContent>
         </Card>
 
-        {/* Distribuição por Disciplina */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center">
-              <ClipboardCheck className="mr-2 h-5 w-5" />
-              Distribuição por Disciplina
-            </CardTitle>
-            <CardDescription>Percentual de alunos por disciplina</CardDescription>
+            <CardTitle>Minhas Turmas</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={disciplinasData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={120}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {disciplinasData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="flex justify-center space-x-4 mt-4">
-              {disciplinasData.map((item, index) => (
-                <div key={index} className="flex items-center">
-                  <div
-                    className="w-3 h-3 rounded-full mr-2"
-                    style={{ backgroundColor: item.color }}
-                  />
-                  <span className="text-sm">{item.name}</span>
+          <CardContent className="space-y-3">
+            {classes.length > 0 ? classes.map(c => (
+              <div key={c.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                <div>
+                  <p className="font-semibold">{c.name}</p>
+                  <p className="text-sm text-muted-foreground">{c.academicLevel}</p>
                 </div>
-              ))}
-            </div>
+                <Badge variant="secondary">{c._count?.students || 0} alunos</Badge>
+              </div>
+            )) : (
+              <p className="text-center text-muted-foreground py-8">
+                Nenhuma turma atribuída. O administrador deve associar-lhe uma turma.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Planos Recentes */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Planos de Aula Recentes</CardTitle>
-              <CardDescription>Últimos planos criados</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {planosAula.slice(0, 3).map((plano) => (
-                <div key={plano.id} className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{plano.titulo}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {plano.disciplina} - {new Date(plano.data).toLocaleDateString('pt-BR')}
-                    </p>
-                  </div>
-                  <Badge variant={plano.status === 'aprovado' ? 'sucess' : 'secondary'}>
-                    {plano.status}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Próximas Atividades */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Próximas Atividades</CardTitle>
-            <CardDescription>Atividades escolares programadas</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {atividades.slice(0, 3).map((atividade) => (
-                <div key={atividade.id} className="flex items-start space-x-3">
-                  <div className="flex-shrink-0">
-                    <Calendar className="h-5 w-5 text-blue-600 mt-0.5" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium">{atividade.titulo}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(atividade.data).toLocaleDateString('pt-BR')}
-                    </p>
-                    <Badge variant="outline" className="mt-1">
-                      {atividade.tipo}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Progresso do Ano Letivo */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Progresso do Ano Letivo</CardTitle>
-          <CardDescription>Acompanhamento das atividades do ano</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between text-sm">
-                <span>Planos de Aula</span>
-                <span>{planosAprovados}/{planosAula.length}</span>
-              </div>
-              <Progress value={(planosAprovados / planosAula.length) * 100} className="mt-2" />
-            </div>
-            <div>
-              <div className="flex justify-between text-sm">
-                <span>Avaliações Realizadas</span>
-                <span>8/12</span>
-              </div>
-              <Progress value={67} className="mt-2" />
-            </div>
-            <div>
-              <div className="flex justify-between text-sm">
-                <span>Relatórios Enviados</span>
-                <span>2/3</span>
-              </div>
-              <Progress value={67} className="mt-2" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -1,285 +1,255 @@
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useStudent } from '@/contexts/StudentContext';
-import { Calendar, Clock, MapPin, Users, BookOpen, Trophy, AlertTriangle } from '../../lib/icons';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, isSameMonth } from 'date-fns';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Loader2, Calendar, Clock, MapPin, CalendarDays, Info } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
+import api from '@/services/api/axios';
+import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+interface Schedule {
+  id: string;
+  dayOfWeek: string | number;
+  startTime: string;
+  endTime: string;
+  subject?: string;
+  classId?: string;
+  className?: string;
+}
+
+interface ClassInfo {
+  id: string;
+  name: string;
+}
+
+interface EventInfo {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  location: string;
+  type: string;
+}
+
+const DAYS_PT: Record<string, string> = {
+  MONDAY: 'Segunda-feira', TUESDAY: 'Terça-feira', WEDNESDAY: 'Quarta-feira',
+  THURSDAY: 'Quinta-feira', FRIDAY: 'Sexta-feira', SATURDAY: 'Sábado', SUNDAY: 'Domingo',
+  '0': 'Domingo', '1': 'Segunda-feira', '2': 'Terça-feira', '3': 'Quarta-feira',
+  '4': 'Quinta-feira', '5': 'Sexta-feira', '6': 'Sábado',
+};
+
+const DAY_ORDER = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', '1', '2', '3', '4', '5', '6'];
+
 export function CalendarView() {
-  const { events } = useStudent();
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [filterType, setFilterType] = useState<string>('all');
+  const user = useAuthStore((state) => state.user);
+  const [classes, setClasses] = useState<ClassInfo[]>([]);
+  const [selectedClass, setSelectedClass] = useState<string>('');
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [events, setEvents] = useState<EventInfo[]>([]);
+  
+  const [loading, setLoading] = useState(true);
+  const [schedLoading, setSchedLoading] = useState(false);
+  const [eventsLoading, setEventsLoading] = useState(false);
 
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  useEffect(() => {
+    if (user) {
+      fetchClasses();
+      fetchEvents();
+    }
+  }, [user]);
 
-  const filteredEvents = events.filter(event => {
-    const typeMatch = filterType === 'all' || event.type === filterType;
-    return typeMatch;
+  useEffect(() => {
+    if (selectedClass) fetchSchedules(selectedClass);
+  }, [selectedClass]);
+
+  const fetchClasses = async () => {
+    try {
+      const res = await api.get(`/classes/teacher/${user!.id}`);
+      const data = res.data || [];
+      setClasses(data);
+      if (data.length) setSelectedClass(data[0].id);
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  const fetchSchedules = async (classId: string) => {
+    setSchedLoading(true);
+    try {
+      const res = await api.get(`/schedules/class/${classId}`);
+      setSchedules(res.data || []);
+    } catch (e) {
+      console.error(e);
+      setSchedules([]);
+    } finally {
+      setSchedLoading(false);
+    }
+  };
+
+  const fetchEvents = async () => {
+    setEventsLoading(true);
+    try {
+      const res = await api.get(`/events`);
+      setEvents(res.data || []);
+    } catch (e) {
+      console.error('Failed to fetch events', e);
+      setEvents([]);
+    } finally {
+      setEventsLoading(false);
+    }
+  };
+
+  // Group schedules by day
+  const grouped = schedules.reduce((acc, s) => {
+    const day = String(s.dayOfWeek);
+    if (!acc[day]) acc[day] = [];
+    acc[day].push(s);
+    return acc;
+  }, {} as Record<string, Schedule[]>);
+
+  const sortedDays = Object.keys(grouped).sort((a, b) => {
+    const ai = DAY_ORDER.indexOf(a);
+    const bi = DAY_ORDER.indexOf(b);
+    return ai - bi;
   });
 
-  const getEventsForDate = (date: Date) => {
-    return filteredEvents.filter(event => isSameDay(new Date(event.date), date));
-  };
-
-  const getEventIcon = (type: string) => {
-    switch (type) {
-      case 'exam':
-        return <BookOpen className="w-4 h-4" />;
-      case 'event':
-        return <Users className="w-4 h-4" />;
-      case 'meeting':
-        return <Users className="w-4 h-4" />;
-      case 'deadline':
-        return <AlertTriangle className="w-4 h-4" />;
-      case 'holiday':
-        return <Trophy className="w-4 h-4" />;
-      default:
-        return <Calendar className="w-4 h-4" />;
-    }
-  };
-
-  const getEventColor = (type: string) => {
-    switch (type) {
-      case 'exam':
-        return 'bg-red-100 text-red-700 border-red-200';
-      case 'event':
-        return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'meeting':
-        return 'bg-purple-100 text-purple-700 border-purple-200';
-      case 'deadline':
-        return 'bg-orange-100 text-orange-700 border-orange-200';
-      case 'holiday':
-        return 'bg-green-100 text-green-700 border-green-200';
-      default:
-        return 'bg-gray-100 text-gray-700 border-gray-200';
-    }
-  };
-
-  const upcomingEvents = filteredEvents
-    .filter(event => new Date(event.date) >= new Date())
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(0, 5);
+  if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Calendário Escolar</h1>
-          <p className="text-gray-600">Acompanhe todos os eventos e atividades</p>
-        </div>
-        
-        <div className="flex gap-3">
-          <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Filtrar por tipo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os eventos</SelectItem>
-              <SelectItem value="exam">Provas</SelectItem>
-              <SelectItem value="event">Eventos</SelectItem>
-              <SelectItem value="meeting">Reuniões</SelectItem>
-              <SelectItem value="deadline">Prazos</SelectItem>
-              <SelectItem value="holiday">Feriados</SelectItem>
-            </SelectContent>
-          </Select>
+          <h1 className="text-3xl font-bold">Horários & Calendário</h1>
+          <p className="text-muted-foreground">Gerencie suas aulas e veja os eventos da escola</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Calendar Grid */}
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>
-                  {format(currentDate, 'MMMM yyyy', { locale: ptBR })}
-                </CardTitle>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
-                  >
-                    ←
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentDate(new Date())}
-                  >
-                    Hoje
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
-                  >
-                    →
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-7 gap-1 mb-4">
-                {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-                  <div key={day} className="p-2 text-center text-sm font-medium text-gray-500">
-                    {day}
-                  </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-7 gap-1">
-                {monthDays.map(day => {
-                  const dayEvents = getEventsForDate(day);
-                  const isSelected = selectedDate && isSameDay(day, selectedDate);
-                  const isCurrentMonth = isSameMonth(day, currentDate);
-                  
-                  return (
-                    <div
-                      key={day.toISOString()}
-                      className={`
-                        min-h-[80px] p-1 border rounded-lg cursor-pointer transition-all hover:bg-gray-50
-                        ${isSelected ? 'ring-2 ring-blue-500 bg-blue-50' : ''}
-                        ${isToday(day) ? 'bg-blue-100 border-blue-300' : 'border-gray-200'}
-                        ${!isCurrentMonth ? 'opacity-50' : ''}
-                      `}
-                      onClick={() => setSelectedDate(day)}
-                    >
-                      <div className={`text-sm font-medium mb-1 ${isToday(day) ? 'text-blue-700' : 'text-gray-900'}`}>
-                        {format(day, 'd')}
-                      </div>
-                      <div className="space-y-1">
-                        {dayEvents.slice(0, 2).map(event => (
-                          <div
-                            key={event.id}
-                            className={`text-xs p-1 rounded border ${getEventColor(event.type)}`}
-                          >
-                            {event.title.length > 15 ? `${event.title.substring(0, 15)}...` : event.title}
-                          </div>
-                        ))}
-                        {dayEvents.length > 2 && (
-                          <div className="text-xs text-gray-500">
-                            +{dayEvents.length - 2} mais
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      <Tabs defaultValue="horarios" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="horarios">Horários de Aulas</TabsTrigger>
+          <TabsTrigger value="eventos">Eventos da Escola</TabsTrigger>
+        </TabsList>
 
-        {/* Events Sidebar */}
-        <div className="space-y-6">
-          {/* Selected Date Events */}
-          {selectedDate && (
+        <TabsContent value="horarios" className="space-y-6">
+          <div className="flex gap-4 items-end flex-wrap">
+            <div className="w-64">
+              <Label>Turma</Label>
+              <select 
+                value={selectedClass} 
+                onChange={e => setSelectedClass(e.target.value)}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="" disabled>Selecionar turma</option>
+                {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {schedLoading ? (
+            <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+          ) : sortedDays.length === 0 ? (
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  {format(selectedDate, 'dd MMMM, yyyy', { locale: ptBR })}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {getEventsForDate(selectedDate).length > 0 ? (
-                  <div className="space-y-3">
-                    {getEventsForDate(selectedDate).map(event => (
-                      <div key={event.id} className={`p-3 rounded-lg border ${getEventColor(event.type)}`}>
-                        <div className="flex items-start gap-2">
-                          {getEventIcon(event.type)}
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-medium truncate">{event.title}</h4>
-                            <p className="text-sm opacity-80 mt-1">{event.description}</p>
-                            <div className="flex items-center gap-4 mt-2 text-xs opacity-70">
-                              <div className="flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
-                                {event.time}
-                              </div>
-                              {event.location && (
-                                <div className="flex items-center gap-1">
-                                  <MapPin className="w-3 h-3" />
-                                  {event.location}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                    <p>Nenhum evento nesta data</p>
-                  </div>
-                )}
+              <CardContent className="py-16 text-center text-muted-foreground">
+                <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>Nenhum horário definido para esta turma.</p>
+                <p className="text-sm mt-1">O administrador pode criar horários em Gestão → Horários.</p>
               </CardContent>
             </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {sortedDays.map(day => (
+                <Card key={day} className="overflow-hidden">
+                  <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 py-3">
+                    <CardTitle className="text-white text-sm font-semibold">
+                      {DAYS_PT[day] || day}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    {grouped[day].sort((a, b) => a.startTime.localeCompare(b.startTime)).map(s => (
+                      <div key={s.id} className="flex items-start gap-3 p-3 border-b last:border-0 hover:bg-slate-50 transition-colors">
+                        <div className="flex-shrink-0 flex flex-col items-center">
+                          <Clock className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">
+                            {(typeof s.subject === 'object' && s.subject !== null ? (s.subject as any).name : s.subject) || classes.find(c => c.id === s.classId)?.name || 'Aula'}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {s.startTime} — {s.endTime}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="text-xs">{s.startTime}</Badge>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           )}
+        </TabsContent>
 
-          {/* Upcoming Events */}
+        <TabsContent value="eventos">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Próximos Eventos</CardTitle>
+              <CardTitle className="flex items-center">
+                <CalendarDays className="mr-2 h-5 w-5" />
+                Calendário Global da Instituição
+              </CardTitle>
+              <CardDescription>
+                Provas globais, atividades extracurriculares, feriados e reuniões.
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {upcomingEvents.map(event => (
-                  <div key={event.id} className="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
-                    <div className={`p-2 rounded-lg ${getEventColor(event.type)}`}>
-                      {getEventIcon(event.type)}
+              {eventsLoading ? (
+                <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+              ) : events.length === 0 ? (
+                <div className="py-12 text-center text-muted-foreground border-2 border-dashed rounded-lg">
+                  <CalendarDays className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p>Nenhum evento agendado para a instituição.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {events.sort((a, b) => new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime()).map(event => {
+                    const eventDate = new Date(event.date);
+                    const isValidDate = !isNaN(eventDate.getTime());
+                    
+                    return (
+                    <div key={event.id} className="p-4 rounded-xl border flex flex-col sm:flex-row gap-4 sm:items-center hover:bg-slate-50 transition-colors">
+                      <div className="flex-shrink-0 bg-blue-100 text-blue-700 p-3 rounded-lg flex flex-col items-center justify-center min-w-[80px]">
+                        <span className="text-sm font-bold uppercase">{isValidDate ? format(eventDate, 'MMM', { locale: ptBR }) : '---'}</span>
+                        <span className="text-2xl font-black">{isValidDate ? format(eventDate, 'dd') : '--'}</span>
+                      </div>
+                      
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-bold text-lg">{event.title}</h3>
+                          <Badge variant="secondary">{event.type}</Badge>
+                        </div>
+                        {event.description && (
+                          <p className="text-muted-foreground text-sm mb-2">{event.description}</p>
+                        )}
+                        <div className="flex flex-wrap gap-4 text-xs text-slate-500">
+                          <div className="flex items-center">
+                            <Clock className="w-3.5 h-3.5 mr-1" />
+                            {isValidDate ? format(eventDate, 'HH:mm') : '--:--'}
+                          </div>
+                          {event.location && (
+                            <div className="flex items-center">
+                              <MapPin className="w-3.5 h-3.5 mr-1" />
+                              {event.location}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium truncate">{event.title}</h4>
-                      <p className="text-sm text-gray-600 mt-1">
-                        {format(new Date(event.date), 'dd MMM', { locale: ptBR })} às {event.time}
-                      </p>
-                      {event.location && (
-                        <p className="text-xs text-gray-500 mt-1">{event.location}</p>
-                      )}
-                    </div>
-                    <Badge variant={event.type === 'exam' ? 'destructive' : 'secondary'}>
-                      {event.type === 'exam' ? 'Prova' : 
-                       event.type === 'event' ? 'Evento' :
-                       event.type === 'meeting' ? 'Reunião' :
-                       event.type === 'deadline' ? 'Prazo' : 'Feriado'}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
+                  )})}
+                </div>
+              )}
             </CardContent>
           </Card>
-
-          {/* Event Types Legend */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Legenda</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {[
-                  { type: 'exam', label: 'Provas', color: 'bg-red-100 text-red-700' },
-                  { type: 'event', label: 'Eventos', color: 'bg-blue-100 text-blue-700' },
-                  { type: 'meeting', label: 'Reuniões', color: 'bg-purple-100 text-purple-700' },
-                  { type: 'deadline', label: 'Prazos', color: 'bg-orange-100 text-orange-700' },
-                  { type: 'holiday', label: 'Feriados', color: 'bg-green-100 text-green-700' }
-                ].map(item => (
-                  <div key={item.type} className="flex items-center gap-2">
-                    <div className={`w-4 h-4 rounded ${item.color}`} />
-                    <span className="text-sm">{item.label}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

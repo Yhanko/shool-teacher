@@ -1,11 +1,12 @@
 import { Routers } from './routes/routes';
+import { Toaster } from 'sonner';
 
 function App() {
   return (
-      <>
-        <Routers />
-      </>
-    
+    <>
+      <Routers />
+      <Toaster position="top-right" richColors />
+    </>
   );
 }
 

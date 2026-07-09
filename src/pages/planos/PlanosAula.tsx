@@ -1,359 +1,428 @@
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { BookOpen, FileText, Download, Plus, Eye, Loader2, Save, Share2 } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
+import api from '@/services/api/axios';
+import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import {
-  Plus,
-  BookOpen,
-  Calendar,
-  Edit,
-  Eye,
-  Send,
-  Search,
-  Filter
-} from '../../lib/icons';
-import { planosAula, turmas } from '@/data/mockData';
-import { PlanoAula } from '@/types';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export function PlanosAula() {
-  const [selectedPlano, setSelectedPlano] = useState<PlanoAula | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('todos');
-
-  const filteredPlanos = planosAula.filter(plano => {
-    const matchesSearch = plano.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         plano.disciplina.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'todos' || plano.status === filterStatus;
-    return matchesSearch && matchesStatus;
+  const user = useAuthStore(s => s.user);
+  const [plans, setPlans] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  const [classes, setClasses] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [sharingId, setSharingId] = useState<string | null>(null);
+  
+  const [isCreating, setIsCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    classId: '',
+    subjectId: '',
+    date: new Date().toISOString().split('T')[0],
+    duration: '90 minutos',
+    theme: '',
+    generalObjective: '',
+    educationalObjective: '',
+    specificCognitive: '',
+    specificPsychomotor: '',
+    specificAffective: '',
+    teachingMethods: '',
+    teachingResources: '',
+    activities: '',
+    introMotivation: '',
+    mediationAssimilation: '',
+    domainConsolidation: '',
+    controlEvaluation: ''
   });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'aprovado': return 'default';
-      case 'pendente': return 'secondary';
-      case 'rascunho': return 'outline';
-      default: return 'outline';
+  useEffect(() => {
+    fetchPlans();
+    fetchClasses();
+  }, []);
+
+  const fetchPlans = async () => {
+    try {
+      const res = await api.get('/lesson-plans/teacher');
+      setPlans(res.data || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
     }
   };
 
+  const fetchClasses = async () => {
+    try {
+      const res = await api.get(`/classes/teacher/${user!.id}`);
+      setClasses(res.data || []);
+    } catch (e) { console.error(e); }
+  };
+
+  const handleClassChange = async (classId: string) => {
+    setFormData(prev => ({ ...prev, classId, subjectId: '' }));
+    try {
+      const res = await api.get(`/classes/${classId}/subjects`);
+      setSubjects(res.data.map((c: any) => c.subject));
+    } catch (e) { console.error(e); }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api.post('/lesson-plans', formData);
+      toast.success('Plano de aula submetido para avaliação.');
+      setIsCreating(false);
+      fetchPlans();
+    } catch (error) {
+      toast.error('Erro ao submeter o plano.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const exportPDF = async (planId: string) => {
+    toast.info('A gerar o PDF, aguarde...');
+    try {
+      const element = document.getElementById(`plan-card-${planId}`);
+      if (!element) return;
+      const canvas = await html2canvas(element, { scale: 2 });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 10, 10, pdfWidth - 20, pdfHeight - 20);
+      pdf.save(`Plano_de_Aula_${planId}.pdf`);
+      toast.success('PDF gerado com sucesso!');
+    } catch (e) {
+      toast.error('Erro ao exportar PDF');
+    }
+  };
+
+  const sharePDF = async (plan: any) => {
+    setSharingId(plan.id);
+    toast.info('A gerar o documento e a preparar a partilha...', { id: 'sharing' });
+    try {
+      const element = document.getElementById(`plan-card-${plan.id}`);
+      if (!element) throw new Error('Render error');
+      
+      const canvas = await html2canvas(element, { scale: 2 });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 10, 10, pdfWidth - 20, pdfHeight - 20);
+      
+      const pdfBlob = pdf.output('blob');
+      
+      const formData = new FormData();
+      formData.append('file', pdfBlob, `Plano_Aula_${plan.id}.pdf`);
+      
+      toast.loading('A guardar o documento na nuvem...', { id: 'sharing' });
+      const uploadRes = await api.post('/uploads/cloudinary', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      const fileUrl = uploadRes.data.path;
+      
+      toast.loading('A notificar a Direção...', { id: 'sharing' });
+      await api.post('/messages/share-document', {
+        url: fileUrl,
+        documentType: 'Plano de Aula',
+        documentName: `${plan.theme} - ${plan.class.name} (${plan.subject.name})`
+      });
+      
+      toast.success('Plano partilhado com sucesso com a Direção!', { id: 'sharing' });
+    } catch (error) {
+      console.error(error);
+      toast.error('Ocorreu um erro ao partilhar o plano.', { id: 'sharing' });
+    } finally {
+      setSharingId(null);
+    }
+  };
+
+  if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Planos de Aula</h1>
-          <p className="text-muted-foreground">Gerencie seus planos de aula por turma e disciplina</p>
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+            <BookOpen className="h-8 w-8 text-blue-600" />
+            Planos de Aula
+          </h1>
+          <p className="text-gray-500">Gestão e submissão de planos metodológicos</p>
         </div>
-        <div className="flex space-x-2">
-          <Button className='bg-green-500 hover:bg-green-600 text-white hover:text-white'>
-            Carregar plano de aula
-          </Button>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button className='bg-blue-500 hover:bg-blue-600'>
-                <Plus className="mr-2 h-4 w-4" />
-                Novo Plano
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh]">
-              <DialogHeader>
-                <DialogTitle>Criar Novo Plano de Aula</DialogTitle>
-                <DialogDescription>
-                  Preencha os detalhes do seu plano de aula
-                </DialogDescription>
-              </DialogHeader>
-              <ScrollArea className="max-h-[70vh] pr-4">
-                <NovoPlanoForm />
-              </ScrollArea>
-            </DialogContent>
-          </Dialog>
-        </div>
-
+        <Button onClick={() => setIsCreating(true)} className="bg-blue-600 hover:bg-blue-700">
+          <Plus className="mr-2 h-4 w-4" /> Novo Plano
+        </Button>
       </div>
 
-      {/* Filtros */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar planos..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-48">
-            <Filter className="mr-2 h-4 w-4" />
-            <SelectValue placeholder="Filtrar por status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos os status</SelectItem>
-            <SelectItem value="rascunho">Rascunho</SelectItem>
-            <SelectItem value="pendente">Pendente</SelectItem>
-            <SelectItem value="aprovado">Aprovado</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Lista de Planos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {filteredPlanos.map((plano) => (
-          <Card key={plano.id} className="hover:shadow-md transition-shadow">
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <CardTitle className="text-lg">{plano.titulo}</CardTitle>
-                  <CardDescription className="mt-1">
-                    {plano.disciplina} • {turmas.find(t => t.id === plano.turmaId)?.nome}
-                  </CardDescription>
-                </div>
-                <Badge variant={getStatusColor(plano.status)} className={ plano.status == "aprovado" ?'bg-green-500 text-white' : 'bg-red-600 text-white'}>
-                  {plano.status}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <Calendar className="mr-2 h-4 w-4" />
-                  {new Date(plano.data).toLocaleDateString('pt-BR')}
-                </div>
-                
+      <Dialog open={isCreating} onOpenChange={setIsCreating}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Elaborar Plano de Aula (Standard MED)</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+            
+            {/* Cabeçalho */}
+            <div className="bg-slate-50 p-4 rounded-lg border space-y-4">
+              <h3 className="font-semibold text-slate-700 border-b pb-2">A. Cabeçalho (Identificação)</h3>
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <h4 className="font-medium mb-2">Objetivos:</h4>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    {plano.objetivos.slice(0, 2).map((objetivo, index) => (
-                      <li key={index} className="flex items-start">
-                        <span className="mr-2">•</span>
-                        <span className="line-clamp-2">{objetivo}</span>
-                      </li>
-                    ))}
-                    {plano.objetivos.length > 2 && (
-                      <li className="text-xs">+{plano.objetivos.length - 2} mais...</li>
-                    )}
-                  </ul>
-                </div>
-
-                <Separator />
-
-                <div className="flex justify-between">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedPlano(plano)}
+                  <Label>Turma</Label>
+                  <select 
+                    value={formData.classId} 
+                    onChange={e => handleClassChange(e.target.value)} 
+                    required
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   >
-                    <Eye className="mr-2 h-4 w-4" />
-                    Ver Detalhes
-                  </Button>
-                  
-                  <div className="flex space-x-2">
-                    <Button variant="outline" size="sm" className='bg-blue-500 hover:bg-blue-600 text-white hover:text-white'>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" className='bg-green-500 hover:bg-green-600 text-white hover:text-white'>
-                      <Send className="h-4 w-4" />
-                    </Button>
-                  </div>
+                    <option value="" disabled>Selecione a turma...</option>
+                    {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <Label>Disciplina</Label>
+                  <select 
+                    value={formData.subjectId} 
+                    onChange={e => setFormData({...formData, subjectId: e.target.value})} 
+                    required
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="" disabled>Selecione a disciplina...</option>
+                    {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <Label>Data da Aula</Label>
+                  <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} required />
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Tempo Letivo (Duração)</Label>
+                  <select 
+                    value={formData.duration} 
+                    onChange={e => setFormData({...formData, duration: e.target.value})} 
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="45 minutos">45 minutos (1 tempo)</option>
+                    <option value="90 minutos">90 minutos (2 tempos)</option>
+                  </select>
+                </div>
+                <div>
+                  <Label>Tema / Unidade</Label>
+                  <Input placeholder="Ex: A Atmosfera e suas Camadas" value={formData.theme} onChange={e => setFormData({...formData, theme: e.target.value})} required />
+                </div>
+              </div>
+            </div>
 
-      {/* Modal de Detalhes */}
-      {selectedPlano && (
-        <Dialog open={!!selectedPlano} onOpenChange={() => setSelectedPlano(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh]">
-            <DialogHeader>
-              <DialogTitle className="flex items-center">
-                <BookOpen className="mr-2 h-5 w-5" />
-                {selectedPlano.titulo}
-              </DialogTitle>
-              <DialogDescription>
-                {selectedPlano.disciplina} • {turmas.find(t => t.id === selectedPlano.turmaId)?.nome} • 
-                {new Date(selectedPlano.data).toLocaleDateString('pt-BR')}
-              </DialogDescription>
-            </DialogHeader>
-            <ScrollArea className="max-h-[70vh] pr-4">
-              <DetalhesPlano plano={selectedPlano} />
-            </ScrollArea>
-          </DialogContent>
-        </Dialog>
-      )}
-    </div>
-  );
-}
+            {/* Objetivos */}
+            <div className="bg-slate-50 p-4 rounded-lg border space-y-4">
+              <h3 className="font-semibold text-slate-700 border-b pb-2">B. Componentes Pedagógicos (Objetivos)</h3>
+              <div>
+                <Label>Objetivo Geral</Label>
+                <Input placeholder="O que o aluno deve compreender de forma macro..." value={formData.generalObjective} onChange={e => setFormData({...formData, generalObjective: e.target.value})} required />
+              </div>
+              <div>
+                <Label>Objetivo Educacional (Opcional)</Label>
+                <Input placeholder="Comportamento ou valores a desenvolver..." value={formData.educationalObjective} onChange={e => setFormData({...formData, educationalObjective: e.target.value})} />
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label>Domínio Cognitivo (Saber)</Label>
+                  <Textarea placeholder="Conhecimentos e factos a memorizar..." rows={3} value={formData.specificCognitive} onChange={e => setFormData({...formData, specificCognitive: e.target.value})} required />
+                </div>
+                <div>
+                  <Label>Domínio Psicomotor (Saber Fazer)</Label>
+                  <Textarea placeholder="Habilidades práticas, exercícios..." rows={3} value={formData.specificPsychomotor} onChange={e => setFormData({...formData, specificPsychomotor: e.target.value})} required />
+                </div>
+                <div>
+                  <Label>Domínio Afetivo (Saber Ser/Estar)</Label>
+                  <Textarea placeholder="Atitudes e valores sociais..." rows={3} value={formData.specificAffective} onChange={e => setFormData({...formData, specificAffective: e.target.value})} required />
+                </div>
+              </div>
+            </div>
 
-function NovoPlanoForm() {
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="titulo">Título da Aula</Label>
-          <Input id="titulo" placeholder="Ex: Equações do 2º Grau" />
-        </div>
-        <div>
-          <Label htmlFor="disciplina">Disciplina</Label>
-          <Select>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione a disciplina" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="matematica">Matemática</SelectItem>
-              <SelectItem value="fisica">Física</SelectItem>
-              <SelectItem value="quimica">Química</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+            {/* Metodologia e Recursos */}
+            <div className="bg-slate-50 p-4 rounded-lg border space-y-4">
+              <h3 className="font-semibold text-slate-700 border-b pb-2">C. Metodologia e Recursos</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Métodos de Ensino</Label>
+                  <Textarea placeholder="Ex: Método Expositivo, Elaboração Conjunta, Trabalho Independente..." rows={2} value={formData.teachingMethods} onChange={e => setFormData({...formData, teachingMethods: e.target.value})} required />
+                </div>
+                <div>
+                  <Label>Recursos de Ensino</Label>
+                  <Textarea placeholder="Ex: Quadro, Giz, Manual Escolar, Projetor..." rows={2} value={formData.teachingResources} onChange={e => setFormData({...formData, teachingResources: e.target.value})} required />
+                </div>
+              </div>
+              <div>
+                <Label>Atividades (Professor e Aluno)</Label>
+                <Textarea placeholder="Ex: O professor explica... O aluno toma notas..." rows={3} value={formData.activities} onChange={e => setFormData({...formData, activities: e.target.value})} required />
+              </div>
+            </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="turma">Turma</Label>
-          <Select>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione a turma" />
-            </SelectTrigger>
-            <SelectContent>
-              {turmas.map(turma => (
-                <SelectItem key={turma.id} value={turma.id}>
-                  {turma.nome} - {turma.serie}
-                </SelectItem>
+            {/* Fases Metodológicas */}
+            <div className="bg-slate-50 p-4 rounded-lg border space-y-4">
+              <h3 className="font-semibold text-slate-700 border-b pb-2">D. Desenvolvimento Didático (Fases da Aula)</h3>
+              <div className="space-y-4">
+                <div>
+                  <Label>1. Introdução e Motivação (10-15%)</Label>
+                  <Textarea placeholder="Como vai captar a atenção e rever os pré-requisitos?" rows={2} value={formData.introMotivation} onChange={e => setFormData({...formData, introMotivation: e.target.value})} required />
+                </div>
+                <div>
+                  <Label>2. Mediação e Assimilação (40-50%)</Label>
+                  <Textarea placeholder="Explicação dos conceitos centrais e utilização de meios de ensino..." rows={3} value={formData.mediationAssimilation} onChange={e => setFormData({...formData, mediationAssimilation: e.target.value})} required />
+                </div>
+                <div>
+                  <Label>3. Domínio e Consolidação (20-25%)</Label>
+                  <Textarea placeholder="Resolução de exercícios práticos, correção de dúvidas..." rows={2} value={formData.domainConsolidation} onChange={e => setFormData({...formData, domainConsolidation: e.target.value})} required />
+                </div>
+                <div>
+                  <Label>4. Controlo e Avaliação (10-15%)</Label>
+                  <Textarea placeholder="Síntese final, perguntas-chave e marcação de TPC..." rows={2} value={formData.controlEvaluation} onChange={e => setFormData({...formData, controlEvaluation: e.target.value})} required />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsCreating(false)}>Cancelar</Button>
+              <Button type="submit" disabled={saving}>
+                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                <Save className="w-4 h-4 mr-2" /> Submeter para Visto
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Histórico de Planos Submetidos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Data</TableHead>
+                <TableHead>Turma / Disciplina</TableHead>
+                <TableHead>Tema</TableHead>
+                <TableHead>Estado (Visto)</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {plans.map(plan => (
+                <TableRow key={plan.id}>
+                  <TableCell>{new Date(plan.date).toLocaleDateString('pt-PT')}</TableCell>
+                  <TableCell>
+                    <div className="font-medium">{plan.class.name}</div>
+                    <div className="text-xs text-muted-foreground">{plan.subject.name}</div>
+                  </TableCell>
+                  <TableCell>{plan.theme}</TableCell>
+                  <TableCell>
+                    <Badge variant={plan.status === 'APPROVED' ? 'default' : plan.status === 'REJECTED' ? 'destructive' : 'secondary'}>
+                      {plan.status === 'APPROVED' ? 'Aprovado' : plan.status === 'REJECTED' ? 'Devolvido' : 'Pendente'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right space-x-2">
+                    <Button size="icon" variant="ghost" onClick={() => exportPDF(plan.id)} title="Exportar PDF">
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => sharePDF(plan)} disabled={sharingId === plan.id} title="Partilhar com a Direção">
+                      {sharingId === plan.id ? <Loader2 className="h-4 w-4 animate-spin text-blue-600" /> : <Share2 className="h-4 w-4 text-blue-600" />}
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="data">Data da Aula</Label>
-          <Input id="data" type="date" />
-        </div>
-      </div>
+              {plans.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                    Nenhum plano de aula registado.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+      
+      {/* Hidden layout for PDF generation */}
+      <div className="fixed top-[-9999px] left-[-9999px]">
+        {plans.map(plan => (
+          <div key={`pdf-${plan.id}`} id={`plan-card-${plan.id}`} className="bg-white p-8 w-[800px] text-black">
+            <div className="text-center mb-6 border-b-2 border-black pb-4">
+              <h1 className="text-2xl font-bold uppercase">República de Angola</h1>
+              <h2 className="text-xl">Ministério da Educação</h2>
+              <h3 className="text-lg font-bold mt-2">Plano de Aula</h3>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 mb-6 border border-gray-300 p-4">
+              <div><strong>Professor:</strong> {user?.name}</div>
+              <div><strong>Disciplina:</strong> {plan.subject.name}</div>
+              <div><strong>Turma:</strong> {plan.class.name}</div>
+              <div><strong>Data:</strong> {new Date(plan.date).toLocaleDateString('pt-PT')}</div>
+              <div><strong>Duração:</strong> {plan.duration}</div>
+              <div className="col-span-2"><strong>Tema:</strong> {plan.theme}</div>
+            </div>
 
-      <div>
-        <Label htmlFor="objetivos">Objetivos da Aula</Label>
-        <Textarea
-          id="objetivos"
-          placeholder="Liste os objetivos da aula, um por linha"
-          className="min-h-[100px]"
-        />
-      </div>
+            <div className="mb-6">
+              <h4 className="font-bold border-b border-gray-300 mb-2">I. Objetivos</h4>
+              <p><strong>Geral:</strong> {plan.generalObjective}</p>
+              {plan.educationalObjective && <p><strong>Educacional:</strong> {plan.educationalObjective}</p>}
+              <div className="pl-4 mt-2">
+                <p><strong>Cognitivo (Saber):</strong> {plan.specificCognitive}</p>
+                <p><strong>Psicomotor (Saber Fazer):</strong> {plan.specificPsychomotor}</p>
+                <p><strong>Afetivo (Saber Ser):</strong> {plan.specificAffective}</p>
+              </div>
+            </div>
 
-      <div>
-        <Label htmlFor="conteudo">Conteúdo</Label>
-        <Textarea
-          id="conteudo"
-          placeholder="Descreva o conteúdo que será abordado"
-          className="min-h-[120px]"
-        />
-      </div>
+            <div className="mb-6">
+              <h4 className="font-bold border-b border-gray-300 mb-2">II. Metodologia e Recursos</h4>
+              <p><strong>Métodos de Ensino:</strong> {plan.teachingMethods}</p>
+              <p><strong>Recursos de Ensino:</strong> {plan.teachingResources}</p>
+              <p className="mt-2"><strong>Atividades:</strong></p>
+              <p className="pl-4 whitespace-pre-wrap">{plan.activities}</p>
+            </div>
 
-      <div>
-        <Label htmlFor="metodologia">Metodologia</Label>
-        <Textarea
-          id="metodologia"
-          placeholder="Descreva a metodologia de ensino que será utilizada"
-          className="min-h-[100px]"
-        />
-      </div>
+            <div className="mb-6">
+              <h4 className="font-bold border-b border-gray-300 mb-2">III. Desenvolvimento Didático</h4>
+              <p className="mt-2"><strong>1. Introdução e Motivação:</strong></p>
+              <p className="pl-4 whitespace-pre-wrap">{plan.introMotivation}</p>
+              
+              <p className="mt-2"><strong>2. Mediação e Assimilação:</strong></p>
+              <p className="pl-4 whitespace-pre-wrap">{plan.mediationAssimilation}</p>
+              
+              <p className="mt-2"><strong>3. Domínio e Consolidação:</strong></p>
+              <p className="pl-4 whitespace-pre-wrap">{plan.domainConsolidation}</p>
+              
+              <p className="mt-2"><strong>4. Controlo e Avaliação:</strong></p>
+              <p className="pl-4 whitespace-pre-wrap">{plan.controlEvaluation}</p>
+            </div>
 
-      <div>
-        <Label htmlFor="recursos">Recursos Necessários</Label>
-        <Input id="recursos" placeholder="Ex: Quadro, calculadora, fichas..." />
-      </div>
-
-      <div>
-        <Label htmlFor="avaliacao">Forma de Avaliação</Label>
-        <Textarea
-          id="avaliacao"
-          placeholder="Como os alunos serão avaliados nesta aula"
-          className="min-h-[80px]"
-        />
-      </div>
-
-      <div className="flex justify-end space-x-2">
-        <Button variant="outline" className='bg-blue-500 hover:bg-blue-600 text-white hover:text-white'>Salvar como Rascunho</Button>
-        <Button className='bg-green-600 hover:bg-green-500 text-white hover:text-white'>Enviar para Aprovação</Button>
-      </div>
-    </div>
-  );
-}
-
-function DetalhesPlano({ plano }: { plano: PlanoAula }) {
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <Label className="text-sm font-medium">Disciplina</Label>
-          <p className="text-sm text-muted-foreground">{plano.disciplina}</p>
-        </div>
-        <div>
-          <Label className="text-sm font-medium">Turma</Label>
-          <p className="text-sm text-muted-foreground">
-            {turmas.find(t => t.id === plano.turmaId)?.nome}
-          </p>
-        </div>
-      </div>
-
-      <div>
-        <Label className="text-sm font-medium">Objetivos</Label>
-        <ul className="mt-2 space-y-1">
-          {plano.objetivos.map((objetivo, index) => (
-            <li key={index} className="flex items-start text-sm">
-              <span className="mr-2 text-blue-600">•</span>
-              {objetivo}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div>
-        <Label className="text-sm font-medium">Conteúdo</Label>
-        <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">
-          {plano.conteudo}
-        </p>
-      </div>
-
-      <div>
-        <Label className="text-sm font-medium">Metodologia</Label>
-        <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">
-          {plano.metodologia}
-        </p>
-      </div>
-
-      <div>
-        <Label className="text-sm font-medium">Recursos Necessários</Label>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {plano.recursos.map((recurso, index) => (
-            <Badge key={index} variant="outline">{recurso}</Badge>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <Label className="text-sm font-medium">Avaliação</Label>
-        <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">
-          {plano.avaliacao}
-        </p>
-      </div>
-
-      <div className="flex justify-end space-x-2 pt-4">
-        <Button variant="outline" className='bg-blue-600 hover:bg-blue-500 text-white hover:text-white'>
-          <Edit className="mr-2 h-4 w-4" />
-          Editar
-        </Button>
-        <Button className='bg-green-600 hover:bg-green-500 text-white hover:text-white'>
-          <Send className="mr-2 h-4 w-4" />
-          Enviar para Supervisor
-        </Button>
+            <div className="mt-16 flex justify-between text-center">
+              <div className="w-48 border-t border-black pt-2">
+                <strong>O Professor</strong>
+              </div>
+              <div className="w-48 border-t border-black pt-2">
+                <strong>Visto da Coordenação</strong>
+                <p className="text-sm mt-1">{plan.status === 'APPROVED' ? '(Aprovado)' : ''}</p>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
