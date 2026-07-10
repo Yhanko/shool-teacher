@@ -140,7 +140,6 @@ function GradeForm({ classInfo, students, subjects, onSuccess }: { classInfo: Cl
           className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           <option value="AC">Avaliação Contínua (AC)</option>
-          <option value="NPP">Nota da Prova do Professor (NPP)</option>
           <option value="NPT">Nota da Prova Trimestral (NPT)</option>
         </select>
       </div>
@@ -224,24 +223,21 @@ export function NotasPauta() {
     if (!sg.length) return null;
 
     const acGrades = sg.filter(g => g.type === 'AC');
-    const nppGrade = sg.find(g => g.type === 'NPP' || g.type === 'CPP'); // Fallback for old records
     const nptGrade = sg.find(g => g.type === 'NPT' || g.type === 'PT'); // Fallback for old records
 
     const mac = acGrades.length > 0 
       ? acGrades.reduce((s, g) => s + g.value, 0) / acGrades.length 
       : null;
     
-    const npp = nppGrade ? nppGrade.value : null;
     const npt = nptGrade ? nptGrade.value : null;
 
     let mt = null;
-    if (mac !== null && npp !== null && npt !== null) {
-      mt = (mac + npp + npt) / 3;
+    if (mac !== null && npt !== null) {
+      mt = (mac + npt) / 2;
     }
 
     return { 
       mac: mac !== null ? mac.toFixed(1) : '—', 
-      npp: npp !== null ? npp.toFixed(1) : '—', 
       npt: npt !== null ? npt.toFixed(1) : '—', 
       mt: mt !== null ? mt.toFixed(1) : null 
     };
@@ -410,7 +406,6 @@ export function NotasPauta() {
                     <TableRow>
                       <TableHead>Aluno</TableHead>
                       <TableHead>MAC</TableHead>
-                      <TableHead>NPP</TableHead>
                       <TableHead>NPT</TableHead>
                       <TableHead>MT Final</TableHead>
                       <TableHead>Estado</TableHead>
@@ -425,7 +420,6 @@ export function NotasPauta() {
                         <TableRow key={student.id}>
                           <TableCell className="font-medium">{student.name}</TableCell>
                           <TableCell>{calc ? calc.mac : '—'}</TableCell>
-                          <TableCell>{calc ? calc.npp : '—'}</TableCell>
                           <TableCell>{calc ? calc.npt : '—'}</TableCell>
                           <TableCell className="font-bold text-lg">{calc && calc.mt ? calc.mt : '—'}</TableCell>
                           <TableCell><Badge variant={status.color}>{status.label}</Badge></TableCell>
