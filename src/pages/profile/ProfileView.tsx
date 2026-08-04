@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAuthStore } from '@/store/authStore';
-import { User, Mail, GraduationCap, Lock, Edit, Save, X, Loader2 } from 'lucide-react';
+import { User, Mail, GraduationCap, Lock, Edit, Save, X, Loader2, Eye, EyeOff } from 'lucide-react';
 import api from '@/services/api/axios';
 import { toast } from 'sonner';
 
@@ -75,9 +75,9 @@ export function ProfileView() {
     }
     setPwLoading(true);
     try {
-      await api.patch('/users/me/password', { 
+      await api.patch('/users/me/password', {
         currentPassword: passwordData.currentPassword,
-        newPassword: passwordData.newPassword 
+        newPassword: passwordData.newPassword
       });
       toast.success('Senha alterada com sucesso!');
       setPwDialogOpen(false);
