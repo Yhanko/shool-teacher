@@ -19,6 +19,7 @@ export function ProfileView() {
   const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [pwLoading, setPwLoading] = useState(false);
   const [pwDialogOpen, setPwDialogOpen] = useState(false);
+  const [showPasswords, setShowPasswords] = useState({ current: false, new: false, confirm: false });
 
   useEffect(() => {
     fetchProfile();
@@ -201,29 +202,59 @@ export function ProfileView() {
                   <div className="space-y-4">
                     <div>
                       <Label>Senha Atual</Label>
-                      <Input
-                        type="password"
-                        value={passwordData.currentPassword}
-                        onChange={e => setPasswordData(p => ({ ...p, currentPassword: e.target.value }))}
-                        placeholder="Insira a senha atual"
-                      />
+                      <div className="relative">
+                        <Input
+                          type={showPasswords.current ? "text" : "password"}
+                          value={passwordData.currentPassword}
+                          onChange={e => setPasswordData(p => ({ ...p, currentPassword: e.target.value }))}
+                          placeholder="Insira a senha atual"
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPasswords(prev => ({ ...prev, current: !prev.current }))}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        >
+                          {showPasswords.current ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
                     </div>
                     <div>
                       <Label>Nova Senha</Label>
-                      <Input
-                        type="password"
-                        value={passwordData.newPassword}
-                        onChange={e => setPasswordData(p => ({ ...p, newPassword: e.target.value }))}
-                        placeholder="Mínimo 6 caracteres"
-                      />
+                      <div className="relative">
+                        <Input
+                          type={showPasswords.new ? "text" : "password"}
+                          value={passwordData.newPassword}
+                          onChange={e => setPasswordData(p => ({ ...p, newPassword: e.target.value }))}
+                          placeholder="Mínimo 6 caracteres"
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        >
+                          {showPasswords.new ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
                     </div>
                     <div>
                       <Label>Confirmar Nova Senha</Label>
-                      <Input
-                        type="password"
-                        value={passwordData.confirmPassword}
-                        onChange={e => setPasswordData(p => ({ ...p, confirmPassword: e.target.value }))}
-                      />
+                      <div className="relative">
+                        <Input
+                          type={showPasswords.confirm ? "text" : "password"}
+                          value={passwordData.confirmPassword}
+                          onChange={e => setPasswordData(p => ({ ...p, confirmPassword: e.target.value }))}
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPasswords(prev => ({ ...prev, confirm: !prev.confirm }))}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        >
+                          {showPasswords.confirm ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
                     </div>
                     <Button onClick={handleChangePassword} disabled={pwLoading} className="w-full">
                       {pwLoading ? 'A confirmar...' : 'Confirmar Alteração'}
