@@ -1,354 +1,240 @@
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect, useRef } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import {
-  MessageCircle,
-  Send,
-  Search,
-  Users,
-  UserCheck,
-  Crown,
-  GraduationCap,
-  Phone,
-  Video,
-  MoreVertical
-} from '../../lib/icons';
+import { MessageCircle, Send, Search, Loader2 } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
+import api from '@/services/api/axios';
 
-interface Conversa {
+interface Message {
   id: string;
-  nome: string;
-  tipo: 'professor' | 'diretor_geral' | 'diretor_pedagogico' | 'aluno' | 'encarregado';
-  avatar?: string;
-  ultimaMensagem: string;
-  hora: string;
-  naoLidas: number;
-  online: boolean;
+  content: string;
+  senderId: string;
+  sender?: { name: string; role: string };
+  receiverId?: string;
+  receiver?: { name: string };
+  createdAt: string;
 }
 
-interface Mensagem {
+interface Contact {
   id: string;
-  remetente: string;
-  conteudo: string;
-  hora: string;
-  minha: boolean;
+  name: string;
+  role: string;
+  lastMessage?: string;
+  hasUnread?: boolean;
 }
-
-const conversas: Conversa[] = [
-  {
-    id: '1',
-    nome: 'Prof. Carlos Mendes',
-    tipo: 'professor',
-    avatar: 'https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop',
-    ultimaMensagem: 'Podemos discutir os planos do próximo trimestre?',
-    hora: '14:30',
-    naoLidas: 2,
-    online: true
-  },
-  {
-    id: '2',
-    nome: 'Diretor Pedagógico',
-    tipo: 'diretor_pedagogico',
-    avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop',
-    ultimaMensagem: 'Os relatórios estão aprovados. Parabéns!',
-    hora: '12:15',
-    naoLidas: 0,
-    online: false
-  },
-  {
-    id: '3',
-    nome: 'Ana António (Encarregada)',
-    tipo: 'encarregado',
-    ultimaMensagem: 'Como está o desempenho do João?',
-    hora: '11:45',
-    naoLidas: 1,
-    online: true
-  },
-  {
-    id: '4',
-    nome: 'Diretor Geral',
-    tipo: 'diretor_geral',
-    avatar: 'https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop',
-    ultimaMensagem: 'Reunião marcada para sexta-feira às 15h',
-    hora: 'Ontem',
-    naoLidas: 0,
-    online: false
-  },
-  {
-    id: '5',
-    nome: 'Maria Fernandes (Aluna)',
-    tipo: 'aluno',
-    ultimaMensagem: 'Professora, tenho dúvidas sobre o exercício 5',
-    hora: 'Ontem',
-    naoLidas: 1,
-    online: true
-  }
-];
-
-const mensagensExemplo: Mensagem[] = [
-  {
-    id: '1',
-    remetente: 'Prof. Carlos Mendes',
-    conteudo: 'Olá Maria! Tudo bem?',
-    hora: '14:25',
-    minha: false
-  },
-  {
-    id: '2',
-    remetente: 'Você',
-    conteudo: 'Olá Carlos! Tudo ótimo, obrigada. E você?',
-    hora: '14:26',
-    minha: true
-  },
-  {
-    id: '3',
-    remetente: 'Prof. Carlos Mendes',
-    conteudo: 'Também estou bem! Queria conversar sobre os planos de aula do próximo trimestre. Você já começou a preparar?',
-    hora: '14:27',
-    minha: false
-  },
-  {
-    id: '4',
-    remetente: 'Você',
-    conteudo: 'Sim, já comecei alguns esboços. Estava pensando em incluir mais atividades práticas.',
-    hora: '14:28',
-    minha: true
-  },
-  {
-    id: '5',
-    remetente: 'Prof. Carlos Mendes',
-    conteudo: 'Excelente ideia! Podemos discutir isso melhor amanhã?',
-    hora: '14:30',
-    minha: false
-  }
-];
 
 export function Chat() {
-  const [conversaSelecionada, setConversaSelecionada] = useState<Conversa>(conversas[0]);
-  const [mensagens, setMensagens] = useState<Mensagem[]>(mensagensExemplo);
-  const [novaMensagem, setNovaMensagem] = useState('');
-  const [busca, setBusca] = useState('');
+  const user = useAuthStore((state) => state.user);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [selected, setSelected] = useState<Contact | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  const getTipoIcon = (tipo: string) => {
-    switch (tipo) {
-      case 'diretor_geral': return Crown;
-      case 'diretor_pedagogico': return UserCheck;
-      case 'professor': return GraduationCap;
-      case 'aluno': return Users;
-      case 'encarregado': return Users;
-      default: return Users;
+  useEffect(() => {
+    fetchContacts();
+  }, [user]);
+
+  useEffect(() => {
+    if (selected) fetchMessages(selected.id);
+  }, [selected]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const fetchContacts = async () => {
+    try {
+      const res = await api.get('/messages/contacts');
+      setContacts(res.data || []);
+    } catch {
+      // If no contacts endpoint, try to get all users in the institution
+      try {
+        const usersRes = await api.get('/users');
+        const others = (usersRes.data || []).filter((u: any) => u.id !== user?.id);
+        setContacts(others.map((u: any) => ({ id: u.id, name: u.name, role: u.role })));
+      } catch (e) { console.error(e); }
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getTipoLabel = (tipo: string) => {
-    switch (tipo) {
-      case 'diretor_geral': return 'Diretor Geral';
-      case 'diretor_pedagogico': return 'Dir. Pedagógico';
-      case 'professor': return 'Professor';
-      case 'aluno': return 'Aluno';
-      case 'encarregado': return 'Encarregado';
-      default: return '';
+  const fetchMessages = async (contactId: string) => {
+    try {
+      const res = await api.get(`/messages/conversation/${contactId}`);
+      const fetchedMessages = res.data || [];
+      setMessages(fetchedMessages);
+      
+      // Marcar mensagens não lidas como lidas
+      const unread = fetchedMessages.filter((m: any) => m.senderId === contactId && !m.read);
+      if (unread.length > 0) {
+        await Promise.all(unread.map((m: any) => api.patch(`/messages/${m.id}/read`)));
+        
+        // Remover o ponto vermelho localmente
+        setContacts(prev => prev.map(c => 
+          c.id === contactId ? { ...c, hasUnread: false } : c
+        ));
+      }
+    } catch {
+      try {
+        const res = await api.get('/messages');
+        const filtered = (res.data || []).filter((m: Message) =>
+          (m.senderId === user?.id && m.receiverId === contactId) ||
+          (m.senderId === contactId && m.receiverId === user?.id)
+        );
+        setMessages(filtered);
+      } catch (e) { console.error(e); }
     }
   };
 
-  const enviarMensagem = () => {
-    if (!novaMensagem.trim()) return;
+  const sendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !selected) return;
+    setSending(true);
+    try {
+      await api.post('/messages', {
+        content: newMessage.trim(),
+        receiverId: selected.id,
+      });
+      setNewMessage('');
+      fetchMessages(selected.id);
+    } catch (e) {
+      alert('Erro ao enviar mensagem.');
+    } finally {
+      setSending(false);
+    }
+  };
 
-    const mensagem: Mensagem = {
-      id: Date.now().toString(),
-      remetente: 'Você',
-      conteudo: novaMensagem,
-      hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-      minha: true
+  const filteredContacts = contacts.filter(c => c.name?.toLowerCase().includes(search.toLowerCase()));
+
+  const getRolePT = (role: string) => {
+    const map: Record<string, string> = {
+      ADMIN: 'Diretor', TEACHER: 'Professor', STUDENT: 'Aluno',
+      PARENT: 'Encarregado', SECRETARY: 'Secretário'
     };
-
-    setMensagens([...mensagens, mensagem]);
-    setNovaMensagem('');
+    return map[role] || role;
   };
 
-  const conversasFiltradas = conversas.filter(conversa =>
-    conversa.nome.toLowerCase().includes(busca.toLowerCase())
-  );
+  if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Mensagens</h1>
-          <p className="text-muted-foreground">Comunicação com toda a comunidade escolar</p>
-        </div>
-      </div>
+    <div className="h-[calc(100vh-8rem)] flex gap-4">
+      {/* Contacts sidebar */}
+      <Card className="w-80 flex-shrink-0 flex flex-col">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2">
+            <MessageCircle className="w-5 h-5" />Mensagens
+          </CardTitle>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              className="pl-9"
+              placeholder="Pesquisar contacto..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+        </CardHeader>
+        <CardContent className="flex-1 p-0 overflow-hidden">
+          <ScrollArea className="h-full">
+            {filteredContacts.length === 0 ? (
+              <p className="text-center text-muted-foreground p-6 text-sm">Nenhum contacto encontrado</p>
+            ) : filteredContacts.map(c => (
+              <div
+                key={c.id}
+                onClick={() => setSelected(c)}
+                className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 transition-colors border-b ${selected?.id === c.id ? 'bg-blue-50 border-l-2 border-l-blue-500' : ''}`}
+              >
+                <Avatar className="w-10 h-10 flex-shrink-0">
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-sm font-bold">
+                    {c.name?.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-sm truncate flex items-center justify-between">
+                    {c.name}
+                    {c.hasUnread && <span className="w-2.5 h-2.5 bg-red-500 rounded-full flex-shrink-0" title="Novas Mensagens"></span>}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{getRolePT(c.role)}</p>
+                </div>
+              </div>
+            ))}
+          </ScrollArea>
+        </CardContent>
+      </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[700px]">
-        {/* Lista de Conversas */}
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <MessageCircle className="mr-2 h-5 w-5" />
-              Conversas
-            </CardTitle>
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar conversas..."
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <ScrollArea className="h-[500px]">
-              {conversasFiltradas.map((conversa) => {
-                const Icon = getTipoIcon(conversa.tipo);
-                return (
-                  <div
-                    key={conversa.id}
-                    className={`p-4 border-b cursor-pointer hover:bg-muted/50 transition-colors ${
-                      conversaSelecionada.id === conversa.id ? 'bg-muted' : ''
-                    }`}
-                    onClick={() => setConversaSelecionada(conversa)}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="relative">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={conversa.avatar} alt={conversa.nome} />
-                          <AvatarFallback>
-                            {conversa.nome.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        {conversa.online && (
-                          <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-500 border-2 border-white rounded-full" />
-                        )}
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <p className="font-medium truncate">{conversa.nome}</p>
-                            <Icon className="h-3 w-3 text-muted-foreground" />
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            {conversa.naoLidas > 0 && (
-                              <Badge variant="destructive" className="h-4 w-4 p-0 pl-1 text-xs rounded-full">
-                                {conversa.naoLidas}
-                              </Badge>
-                            )}
-                            <span className="text-xs text-muted-foreground">{conversa.hora}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between mt-1">
-                          <p className="text-sm text-muted-foreground truncate">
-                            {conversa.ultimaMensagem}
+      {/* Chat area */}
+      <Card className="flex-1 flex flex-col overflow-hidden">
+        {selected ? (
+          <>
+            <CardHeader className="border-b pb-3">
+              <div className="flex items-center gap-3">
+                <Avatar>
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold">
+                    {selected.name?.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-semibold">{selected.name}</p>
+                  <p className="text-xs text-muted-foreground">{getRolePT(selected.role)}</p>
+                </div>
+              </div>
+            </CardHeader>
+            <ScrollArea className="flex-1 p-4">
+              {messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                  <MessageCircle className="w-12 h-12 mb-3 opacity-30" />
+                  <p>Nenhuma mensagem ainda. Diga olá! 👋</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {messages.map(m => {
+                    const isMine = m.senderId === user?.id;
+                    return (
+                      <div key={m.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[70%] rounded-2xl px-4 py-2 ${isMine ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-800'}`}>
+                          <p className="text-sm">{m.content}</p>
+                          <p className={`text-xs mt-1 ${isMine ? 'text-blue-200' : 'text-muted-foreground'}`}>
+                            {new Date(m.createdAt).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>
-                        <Badge variant="outline" className="text-xs mt-1">
-                          {getTipoLabel(conversa.tipo)}
-                        </Badge>
                       </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </ScrollArea>
-          </CardContent>
-        </Card>
-
-        {/* Área de Conversa */}
-        <Card className="lg:col-span-2 flex flex-col">
-          <CardHeader className="flex-shrink-0">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="relative">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={conversaSelecionada.avatar} alt={conversaSelecionada.nome} />
-                    <AvatarFallback>
-                      {conversaSelecionada.nome.split(' ').map(n => n[0]).join('')}
-                    </AvatarFallback>
-                  </Avatar>
-                  {conversaSelecionada.online && (
-                    <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-500 border-2 border-white rounded-full" />
-                  )}
+                    );
+                  })}
+                  <div ref={bottomRef} />
                 </div>
-                <div>
-                  <CardTitle className="text-lg">{conversaSelecionada.nome}</CardTitle>
-                  <CardDescription className="flex items-center">
-                    <Badge variant="outline" className="text-xs mr-2">
-                      {getTipoLabel(conversaSelecionada.tipo)}
-                    </Badge>
-                    {conversaSelecionada.online ? (
-                      <span className="text-green-600 text-sm">Online</span>
-                    ) : (
-                      <span className="text-muted-foreground text-sm">Offline</span>
-                    )}
-                  </CardDescription>
-                </div>
-              </div>
-              
-              <div className="flex space-x-2">
-                <Button variant="outline" size="sm">
-                  <Phone className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Video className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-
-          <Separator />
-
-          <CardContent className="flex-1 flex flex-col p-0">
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-4">
-                {mensagens.map((mensagem) => (
-                  <div
-                    key={mensagem.id}
-                    className={`flex ${mensagem.minha ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-[70%] p-3 rounded-lg ${
-                        mensagem.minha
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-muted'
-                      }`}
-                    >
-                      <p className="text-sm">{mensagem.conteudo}</p>
-                      <p className={`text-xs mt-1 ${
-                        mensagem.minha ? 'text-blue-100' : 'text-muted-foreground'
-                      }`}>
-                        {mensagem.hora}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              )}
             </ScrollArea>
-
             <div className="p-4 border-t">
-              <div className="flex space-x-2">
+              <form onSubmit={sendMessage} className="flex gap-2">
                 <Input
-                  placeholder="Digite sua mensagem..."
-                  value={novaMensagem}
-                  onChange={(e) => setNovaMensagem(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && enviarMensagem()}
+                  value={newMessage}
+                  onChange={e => setNewMessage(e.target.value)}
+                  placeholder="Escreva uma mensagem..."
                   className="flex-1"
                 />
-                <Button onClick={enviarMensagem} className='bg-green-600 hover:bg-green-500 text-white hover:text-white'>
-                  <Send className="h-4 w-4" />
+                <Button type="submit" disabled={sending || !newMessage.trim()} size="icon" className="bg-blue-600">
+                  {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 </Button>
-              </div>
+              </form>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8 text-center bg-slate-50/50">
+            <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-4">
+              <MessageCircle className="w-8 h-8" />
+            </div>
+            <h3 className="text-xl font-medium text-slate-800 mb-2">Bem-vindo ao Chat</h3>
+            <p className="max-w-md">Selecione um contacto na barra lateral para ver as mensagens ou iniciar uma nova conversa.</p>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

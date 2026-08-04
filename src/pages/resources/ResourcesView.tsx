@@ -1,311 +1,357 @@
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useStudent } from '@/contexts/StudentContext';
-import { BookOpen, Download, Search, FileText, Video, Link, Gamepad2, Calendar, Eye } from '../../lib/icons';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { BookOpen, Download, Search, FileText, Video, Link as LinkIcon, Loader2, Plus, ExternalLink, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import api from '@/services/api/axios';
+import { toast } from 'sonner';
+
+interface Resource {
+  id: string;
+  title: string;
+  description: string;
+  type: string;
+  url: string;
+  class?: { name: string };
+  subject?: { name: string };
+  createdAt: string;
+}
+
+interface ClassModel {
+  id: string;
+  name: string;
+}
+
+interface SubjectModel {
+  id: string;
+  name: string;
+}
 
 export function ResourcesView() {
-  const { subjects } = useStudent();
+  const [resources, setResources] = useState<Resource[]>([]);
+  const [classes, setClasses] = useState<ClassModel[]>([]);
+  const [subjects, setSubjects] = useState<SubjectModel[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [subjectFilter, setSubjectFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
-
-  // Mock resources data - in a real app this would come from context or API
-  const resources = [
-    {
-      id: '1',
-      title: 'Manual de Matemática - Capítulo 5: Derivadas',
-      type: 'pdf',
-      subject: 'Matemática',
-      url: '#',
-      description: 'Material completo sobre derivadas e suas aplicações práticas',
-      uploadDate: '2024-01-15',
-      size: '2.5 MB',
-      downloads: 45
-    },
-    {
-      id: '2',
-      title: 'Exercícios Resolvidos - Física Quântica',
-      type: 'pdf',
-      subject: 'Física',
-      url: '#',
-      description: 'Coleção de exercícios resolvidos sobre mecânica quântica',
-      uploadDate: '2024-01-18',
-      size: '1.8 MB',
-      downloads: 32
-    },
-    {
-      id: '3',
-      title: 'Videoaula: Análise Sintática',
-      type: 'video',
-      subject: 'Português',
-      url: '#',
-      description: 'Explicação detalhada sobre análise sintática e morfológica',
-      uploadDate: '2024-01-20',
-      size: '150 MB',
-      downloads: 67
-    },
-    {
-      id: '6',
-      title: 'Resumo: Literatura Portuguesa Século XIX',
-      type: 'pdf',
-      subject: 'Português',
-      url: '#',
-      description: 'Resumo completo dos principais autores e obras do século XIX',
-      uploadDate: '2024-01-28',
-      size: '950 KB',
-      downloads: 56
-    }
-  ];
-
-  const filteredResources = resources.filter(resource => {
-    const searchMatch = resource.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       resource.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const subjectMatch = subjectFilter === 'all' || resource.subject === subjectFilter;
-    const typeMatch = typeFilter === 'all' || resource.type === typeFilter;
-    return searchMatch && subjectMatch && typeMatch;
+  
+  // Create resource state
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [newResource, setNewResource] = useState({
+    title: '',
+    description: '',
+    type: 'pdf',
+    url: '',
+    classId: '',
+    subjectId: ''
   });
 
-  const getResourceIcon = (type: string) => {
-    switch (type) {
-      case 'pdf':
-        return <FileText className="w-5 h-5 text-red-600" />;
-      case 'video':
-        return <Video className="w-5 h-5 text-blue-600" />;
-      case 'link':
-        return <Link className="w-5 h-5 text-green-600" />;
-      case 'game':
-        return <Gamepad2 className="w-5 h-5 text-purple-600" />;
-      default:
-        return <FileText className="w-5 h-5 text-gray-600" />;
+  useEffect(() => {
+    fetchResources();
+    fetchClassesAndSubjects();
+  }, []);
+
+  const fetchClassesAndSubjects = async () => {
+    try {
+      const [resClasses, resSubjects] = await Promise.all([
+        api.get('/classes'),
+        api.get('/subjects')
+      ]);
+      setClasses(resClasses.data || []);
+      setSubjects(resSubjects.data || []);
+    } catch (e) {
+      console.error('Failed to fetch classes/subjects', e);
     }
   };
 
-  const getResourceBadge = (type: string) => {
-    switch (type) {
-      case 'pdf':
-        return <Badge variant="destructive">PDF</Badge>;
-      case 'video':
-        return <Badge variant="default">Vídeo</Badge>;
-      case 'link':
-        return <Badge variant="success">Link</Badge>;
-      case 'game':
-        return <Badge variant="secondary">Jogo</Badge>;
-      default:
-        return <Badge variant="outline">{type}</Badge>;
+  const fetchResources = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/resources');
+      setResources(res.data || []);
+    } catch (e) {
+      console.error('Failed to fetch resources', e);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getSubjectColor = (subject: string) => {
-    const subjectData = subjects.find(s => s.name === subject);
-    return subjectData?.color || '#6B7280';
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newResource.title) return;
+    
+    // Validate if it's file or link
+    const isFile = newResource.type === 'pdf' || newResource.type === 'image';
+    if (isFile && !selectedFile) {
+      toast.error('Por favor, selecione um ficheiro para upload.');
+      return;
+    }
+    if (!isFile) {
+      if (!newResource.url) {
+        toast.error('Por favor, insira o URL do recurso.');
+        return;
+      }
+      try {
+        new URL(newResource.url);
+      } catch (e) {
+        toast.error('URL inválido. Certifique-se que começa com http:// ou https://');
+        return;
+      }
+    }
+    
+    setIsCreating(true);
+    try {
+      let finalUrl = newResource.url;
+      
+      // Se for ficheiro, fazer upload para o cloudinary
+      if (isFile && selectedFile) {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        const uploadRes = await api.post('/uploads/cloudinary', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        finalUrl = uploadRes.data.url;
+      }
+
+      await api.post('/resources', { ...newResource, url: finalUrl });
+      setIsDialogOpen(false);
+      setNewResource({ title: '', description: '', type: 'pdf', url: '', classId: '', subjectId: '' });
+      setSelectedFile(null);
+      toast.success('Recurso partilhado com sucesso!');
+      fetchResources();
+    } catch (e: any) {
+      console.error('Failed to create resource', e);
+      toast.error(`Erro ao partilhar recurso: ${e.response?.data?.message || e.message}`);
+    } finally {
+      setIsCreating(false);
+    }
   };
 
-  const totalResources = resources.length;
-  const totalDownloads = resources.reduce((acc, resource) => acc + resource.downloads, 0);
-  const recentResources = resources.filter(resource => 
-    new Date(resource.uploadDate) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-  ).length;
+  const handleDelete = async (id: string) => {
+    if (!confirm('Tem a certeza que pretende remover este recurso?')) return;
+    try {
+      await api.delete(`/resources/${id}`);
+      toast.success('Recurso apagado com sucesso!');
+      fetchResources();
+    } catch (e: any) {
+      console.error('Failed to delete resource', e);
+      toast.error(`Erro ao apagar recurso: ${e.response?.data?.message || e.message}`);
+    }
+  };
+
+  const filteredResources = resources.filter(res => {
+    const matchesSearch = res.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (res.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (res.subject?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (res.class?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = typeFilter === 'all' || res.type === typeFilter;
+    return matchesSearch && matchesType;
+  });
+
+  const getIconForType = (type: string) => {
+    switch (type) {
+      case 'pdf': return <FileText className="w-5 h-5 text-red-500" />;
+      case 'video': return <Video className="w-5 h-5 text-blue-500" />;
+      case 'book': return <BookOpen className="w-5 h-5 text-amber-500" />;
+      case 'link': return <LinkIcon className="w-5 h-5 text-green-500" />;
+      default: return <FileText className="w-5 h-5 text-gray-500" />;
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Recursos Educativos</h1>
-          <p className="text-gray-600">Materiais de estudo, livros e recursos interativos</p>
+          <h1 className="text-3xl font-bold">Recursos Didáticos</h1>
+          <p className="text-muted-foreground">Material de apoio disponibilizado pela escola e professores</p>
         </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardContent className="flex items-center p-6">
-            <div className="p-2 bg-blue-100 rounded-lg mr-4">
-              <BookOpen className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Recursos</p>
-              <p className="text-2xl font-bold text-gray-900">{totalResources}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="flex items-center p-6">
-            <div className="p-2 bg-green-100 rounded-lg mr-4">
-              <Download className="w-6 h-6 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Downloads</p>
-              <p className="text-2xl font-bold text-gray-900">{totalDownloads}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="flex items-center p-6">
-            <div className="p-2 bg-purple-100 rounded-lg mr-4">
-              <Calendar className="w-6 h-6 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Novos (7 dias)</p>
-              <p className="text-2xl font-bold text-gray-900">{recentResources}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="flex items-center p-6">
-            <div className="p-2 bg-orange-100 rounded-lg mr-4">
-              <FileText className="w-6 h-6 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">PDFs</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {resources.filter(r => r.type === 'pdf').length}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input
-            placeholder="Pesquisar recursos..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filtrar por disciplina" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas as disciplinas</SelectItem>
-            {subjects.map(subject => (
-              <SelectItem key={subject.id} value={subject.name}>
-                {subject.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filtrar por tipo" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os tipos</SelectItem>
-            <SelectItem value="pdf">PDFs</SelectItem>
-            <SelectItem value="video">Vídeos</SelectItem>
-            <SelectItem value="link">Links</SelectItem>
-            <SelectItem value="game">Jogos</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Resources Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredResources.map(resource => (
-          <Card key={resource.id} className="hover:shadow-lg transition-shadow duration-300">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  {getResourceIcon(resource.type)}
-                  <div 
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: getSubjectColor(resource.subject) }}
-                  />
+        
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-primary"><Plus className="w-4 h-4 mr-2" /> Adicionar Recurso</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Partilhar Novo Recurso</DialogTitle>
+              <DialogDescription>Adicione um ficheiro, livro ou vídeo para partilhar com a escola.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleCreate} className="space-y-4 pt-4">
+              <div className="space-y-2">
+                <Label>Título do Recurso</Label>
+                <Input value={newResource.title} onChange={e => setNewResource({...newResource, title: e.target.value})} placeholder="Ex: Livro de Matemática 10º Ano" required />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Turma</Label>
+                  <select 
+                    value={newResource.classId} 
+                    onChange={e => setNewResource({...newResource, classId: e.target.value})}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="">Selecione uma Turma</option>
+                    {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
                 </div>
-                {getResourceBadge(resource.type)}
-              </div>
-              <CardTitle className="text-lg leading-tight">{resource.title}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-gray-600 line-clamp-2">{resource.description}</p>
-              
-              <div className="flex items-center justify-between text-sm text-gray-500">
-                <span>{resource.subject}</span>
-                <span>{resource.size}</span>
-              </div>
-              
-              <div className="flex items-center justify-between text-xs text-gray-400">
-                <span>{format(new Date(resource.uploadDate), 'dd MMM, yyyy', { locale: ptBR })}</span>
-                <div className="flex items-center gap-1">
-                  <Download className="w-3 h-3" />
-                  <span>{resource.downloads}</span>
+                <div className="space-y-2">
+                  <Label>Disciplina</Label>
+                  <select 
+                    value={newResource.subjectId} 
+                    onChange={e => setNewResource({...newResource, subjectId: e.target.value})}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="">Selecione uma Disciplina</option>
+                    {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
                 </div>
               </div>
-              
-              <div className="flex gap-2 pt-2">
-                {resource.type === 'video' || resource.type === '' || resource.type === 'pdf' ? (
-                  <div className='flex gap-2 pt-2 w-screen'>
-                    <Button size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700">
-                      <Download className="w-4 h-4 mr-2" />
-                      Download
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <Eye className="w-4 h-4 mr-2" />
-                      Pré-visualizar
-                    </Button>
-                  </div>
-                  
-                ) : (
-                  <Button variant="outline" className='w-full'>
-                    <Eye className="w-4 h-4 mr-2" />
-                    Acessar
-                  </Button>
-                )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Tipo</Label>
+                  <select 
+                    value={newResource.type} 
+                    onChange={e => {
+                      setNewResource({...newResource, type: e.target.value, url: ''});
+                      setSelectedFile(null);
+                    }}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="pdf">Ficheiro (PDF)</option>
+                    <option value="image">Imagem</option>
+                    <option value="video">Vídeo (Link)</option>
+                    <option value="book">Livro (Link)</option>
+                    <option value="link">Link Web</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  {(newResource.type === 'pdf' || newResource.type === 'image') ? (
+                    <>
+                      <Label>Selecionar Ficheiro</Label>
+                      <Input 
+                        type="file" 
+                        accept={newResource.type === 'pdf' ? '.pdf' : 'image/*'} 
+                        onChange={e => setSelectedFile(e.target.files?.[0] || null)} 
+                        required={!selectedFile}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <Label>URL (Link)</Label>
+                      <Input 
+                        type="url"
+                        value={newResource.url} 
+                        onChange={e => setNewResource({...newResource, url: e.target.value})} 
+                        placeholder="https://..." 
+                        required 
+                      />
+                    </>
+                  )}
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        ))}
+              <div className="space-y-2">
+                <Label>Descrição</Label>
+                <Input value={newResource.description} onChange={e => setNewResource({...newResource, description: e.target.value})} placeholder="Breve descrição do material" />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+                <Button type="submit" disabled={isCreating}>
+                  {isCreating ? 'A partilhar...' : 'Partilhar'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {filteredResources.length === 0 && (
-        <Card>
-          <CardContent className="text-center py-12">
-            <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum recurso encontrado</h3>
-            <p className="text-gray-600">
-              Tente ajustar os filtros ou termos de pesquisa para encontrar os recursos desejados.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Quick Access Section */}
       <Card>
-        <CardHeader>
-          <CardTitle>Acesso Rápido</CardTitle>
+        <CardHeader className="pb-3">
+          <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
+            <div className="relative flex-1 w-full max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input 
+                placeholder="Pesquisar por título ou disciplina..." 
+                className="pl-9"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <select 
+                value={typeFilter} 
+                onChange={e => setTypeFilter(e.target.value)}
+                className="flex h-9 w-full sm:w-[150px] rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="all">Todos os tipos</option>
+                <option value="pdf">Documentos (PDF)</option>
+                <option value="video">Vídeos</option>
+                <option value="book">Livros</option>
+                <option value="link">Links Úteis</option>
+              </select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2">
-              <FileText className="w-6 h-6 text-red-600" />
-              <span className="text-sm">Manuais Escolares</span>
-            </Button>
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2">
-              <Video className="w-6 h-6 text-blue-600" />
-              <span className="text-sm">Videoaulas</span>
-            </Button>
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2">
-              <Gamepad2 className="w-6 h-6 text-purple-600" />
-              <span className="text-sm">Jogos Educativos</span>
-            </Button>
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2">
-              <Link className="w-6 h-6 text-green-600" />
-              <span className="text-sm">Plataformas Externas</span>
-            </Button>
-          </div>
+          {loading ? (
+            <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+          ) : filteredResources.length === 0 ? (
+            <div className="text-center py-12 border-2 border-dashed rounded-lg text-muted-foreground">
+              <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p>Nenhum recurso encontrado.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredResources.map((resource) => (
+                <Card key={resource.id} className="overflow-hidden hover:shadow-md transition-shadow group flex flex-col">
+                  <CardHeader className="p-4 pb-2 border-b bg-slate-50/50 flex flex-row items-start justify-between space-y-0">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <div className="p-2 bg-white rounded-md shadow-sm shrink-0">
+                        {getIconForType(resource.type)}
+                      </div>
+                      <div className="min-w-0">
+                        <CardTitle className="text-base truncate" title={resource.title}>
+                          {resource.title}
+                        </CardTitle>
+                        <CardDescription className="truncate text-xs">
+                          {resource.subject?.name || 'Geral'} • {resource.class?.name || 'Todas as turmas'}
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-4 flex-1 flex flex-col justify-between gap-4">
+                    <p className="text-sm text-slate-600 line-clamp-2">
+                      {resource.description || 'Sem descrição.'}
+                    </p>
+                    
+                    <div className="flex items-center justify-between mt-auto">
+                      <span className="text-xs text-muted-foreground">
+                        {format(new Date(resource.createdAt), "dd 'de' MMM, yyyy", { locale: ptBR })}
+                      </span>
+                      
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleDelete(resource.id)} title="Remover">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                        <Button variant="secondary" size="sm" className="h-8" asChild>
+                          <a href={resource.url} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="w-4 h-4 mr-2" />
+                            Acessar
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
