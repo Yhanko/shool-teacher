@@ -9,10 +9,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { User, LogOut, Settings } from '../lib/icons';
+import { Menu } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useNavigate } from 'react-router-dom';
 
-export function Header() {
+export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
@@ -25,20 +26,32 @@ export function Header() {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4">
+    <header className="bg-white border-b border-gray-200 px-3 sm:px-6 py-3 sm:py-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold text-gray-900">
-            Bem-vindo, {user?.name?.split(' ')[0] || 'Professor'}!
-          </h2>
-          <p className="text-sm text-gray-600">
-            {new Date().toLocaleDateString('pt-PT', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })}
-          </p>
+        <div className="flex items-center gap-2 sm:gap-4">
+          {/* Hamburger for mobile */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="md:hidden h-9 w-9 p-0"
+            onClick={onMenuToggle}
+            aria-label="Abrir menu"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          <div>
+            <h2 className="text-lg sm:text-2xl font-semibold text-gray-900 truncate">
+              Bem-vindo, {user?.name?.split(' ')[0] || 'Professor'}!
+            </h2>
+            <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">
+              {new Date().toLocaleDateString('pt-PT', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center space-x-4">

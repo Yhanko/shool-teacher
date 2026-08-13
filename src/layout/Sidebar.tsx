@@ -28,11 +28,13 @@ import { useAuthStore } from '@/store/authStore';
 interface SidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
 // Items are defined inside the component to access dynamic counts
 
-export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
+export function Sidebar({ activeTab, onTabChange, mobileOpen, onMobileClose }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
@@ -79,7 +81,11 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   return (
     <div className={cn(
       "flex flex-col bg-white border-r border-gray-200 transition-all duration-300",
-      collapsed ? "w-16" : "w-64"
+      // Desktop: always visible, collapsible
+      "hidden md:flex",
+      collapsed ? "md:w-16" : "md:w-64",
+      // Mobile: fixed drawer overlay
+      mobileOpen && "fixed inset-y-0 left-0 z-30 flex w-64 shadow-2xl",
     )}>
       <div className="flex items-center justify-between p-4 border-b">
         {!collapsed && (
