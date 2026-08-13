@@ -113,7 +113,7 @@ export function Sidebar({ activeTab, onTabChange, mobileOpen, onMobileClose }: S
               className={cn(
                 "w-full justify-center mb-1 h-10 bg-white text-blue-700 border border-gray-300 hover:text-blue-700",
                 collapsed && "px-2",
-                activeTab === item.id && "bg-blue-600 text-white hover:bg-blue-700"
+                activeTab === item.id && "bg-blue-600 text-white hover:bg-blue-700 hover:text-white"
               )}
               onClick={() => {
                 onTabChange(item.id)
