@@ -3,17 +3,17 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Home, 
-  Users, 
-  Calendar, 
-  MessageCircle, 
-  Bell, 
-  Settings, 
-  LogOut, 
-  GraduationCap, 
-  User, 
-  Menu, 
+import {
+  Home,
+  Users,
+  Calendar,
+  MessageCircle,
+  Bell,
+  Settings,
+  LogOut,
+  GraduationCap,
+  User,
+  Menu,
   Bot,
   ClipboardCheck,
   BookOpen,
@@ -54,8 +54,8 @@ export function Sidebar({ activeTab, onTabChange, mobileOpen, onMobileClose }: S
 
         api.get('/messages/inbox')
           .then(res => {
-            const unreadMsgs = (res.data || []).filter((chat: any) => 
-               chat.lastMessage && !chat.lastMessage.read && !chat.lastMessage.isSender
+            const unreadMsgs = (res.data || []).filter((chat: any) =>
+              chat.lastMessage && !chat.lastMessage.read && !chat.lastMessage.isSender
             ).length;
             setUnreadMessages(unreadMsgs);
           })
@@ -113,11 +113,11 @@ export function Sidebar({ activeTab, onTabChange, mobileOpen, onMobileClose }: S
               className={cn(
                 "w-full justify-center mb-1 h-10 bg-white text-blue-700 border border-gray-300 hover:text-blue-700",
                 collapsed && "px-2",
-                activeTab === item.id && "bg-blue-600 text-white hover:bg-blue-700 hover:text-white"
+                activeTab === item.id && "bg-blue-600 text-white hover:text-white"
               )}
               onClick={() => {
                 onTabChange(item.id)
-                navigate("/"+ item.id)
+                navigate("/" + item.id)
               }}
             >
               <item.icon className={cn("h-4 w-4", !collapsed && "mr-3")} />
@@ -135,7 +135,7 @@ export function Sidebar({ activeTab, onTabChange, mobileOpen, onMobileClose }: S
           ))}
         </nav>
       </ScrollArea>
-      
+
       <div className="p-4 border-t">
         <Button
           variant="destructive"

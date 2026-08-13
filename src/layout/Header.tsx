@@ -33,7 +33,7 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
           <Button
             variant="ghost"
             size="sm"
-            className="md:hidden h-9 w-9 p-0"
+            className="md:hidden h-9 w-9 p-0 bg-white text-gray-700 hover:bg-gray-100 hover:text-gray-900"
             onClick={onMenuToggle}
             aria-label="Abrir menu"
           >
