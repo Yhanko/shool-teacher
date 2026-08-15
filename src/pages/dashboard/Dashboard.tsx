@@ -71,9 +71,9 @@ export function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Welcome banner */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl p-6 text-white">
+      <div className="bg-gradient-to-r from-purple-600 to-indigo-700 rounded-xl p-6 text-white">
         <h2 className="text-2xl font-bold">Bem-vindo, {user?.name?.split(' ')[0] || 'Professor'}! 👋</h2>
-        <p className="mt-1 text-blue-100">Aqui está um resumo do seu painel de hoje.</p>
+        <p className="mt-1 text-purple-100">Aqui está um resumo do seu painel de hoje.</p>
       </div>
 
       {/* Stats cards */}

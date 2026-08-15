@@ -59,7 +59,7 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10">
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold">
+                  <AvatarFallback className="bg-gradient-to-br from-purple-500 to-indigo-600 text-white font-bold">
                     {initials}
                   </AvatarFallback>
                 </Avatar>

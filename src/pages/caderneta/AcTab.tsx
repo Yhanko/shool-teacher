@@ -47,7 +47,7 @@ export function AcTab({ classInfo, subjectId, term }: { classInfo: any, subjectI
               {Array.from({ length: maxAcCount }).map((_, i) => (
                 <TableHead key={i} className="text-center">AC {i + 1}</TableHead>
               ))}
-              <TableHead className="text-center font-bold bg-blue-50 text-blue-900 rounded-tr-md">MAC</TableHead>
+              <TableHead className="text-center font-bold bg-purple-50 text-purple-900 rounded-tr-md">MAC</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -62,7 +62,7 @@ export function AcTab({ classInfo, subjectId, term }: { classInfo: any, subjectI
                       {studentGrades[i] ? studentGrades[i].value : '—'}
                     </TableCell>
                   ))}
-                  <TableCell className="text-center font-bold bg-blue-50">
+                  <TableCell className="text-center font-bold bg-purple-50">
                     {calculateMAC(studentGrades)}
                   </TableCell>
                 </TableRow>

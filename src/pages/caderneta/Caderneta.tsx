@@ -80,7 +80,7 @@ export function Caderneta() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
-            <BookOpen className="w-8 h-8 text-blue-600" />
+            <BookOpen className="w-8 h-8 text-purple-600" />
             Caderneta do Professor
           </h1>
           <p className="text-muted-foreground">O seu documento oficial de controlo pedagógico</p>

@@ -160,7 +160,7 @@ export function CalendarView() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {sortedDays.map(day => (
                 <Card key={day} className="overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 py-3">
+                  <CardHeader className="bg-gradient-to-r from-purple-600 to-indigo-600 py-3">
                     <CardTitle className="text-white text-sm font-semibold">
                       {DAYS_PT[day] || day}
                     </CardTitle>
@@ -216,7 +216,7 @@ export function CalendarView() {
                     
                     return (
                     <div key={event.id} className="p-4 rounded-xl border flex flex-col sm:flex-row gap-4 sm:items-center hover:bg-slate-50 transition-colors">
-                      <div className="flex-shrink-0 bg-blue-100 text-blue-700 p-3 rounded-lg flex flex-col items-center justify-center min-w-[80px]">
+                      <div className="flex-shrink-0 bg-purple-100 text-purple-700 p-3 rounded-lg flex flex-col items-center justify-center min-w-[80px]">
                         <span className="text-sm font-bold uppercase">{isValidDate ? format(eventDate, 'MMM', { locale: ptBR }) : '---'}</span>
                         <span className="text-2xl font-black">{isValidDate ? format(eventDate, 'dd') : '--'}</span>
                       </div>

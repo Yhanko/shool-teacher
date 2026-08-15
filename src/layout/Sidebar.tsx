@@ -25,14 +25,15 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 
+// Note: Using relative path to the src/assets for Vite to bundle
+//import yhankoLogo from '@/assets/yhankoIMG.png';
+
 interface SidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
 }
-
-// Items are defined inside the component to access dynamic counts
 
 export function Sidebar({ activeTab, onTabChange, mobileOpen, onMobileClose }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
@@ -80,74 +81,91 @@ export function Sidebar({ activeTab, onTabChange, mobileOpen, onMobileClose }: S
 
   return (
     <div className={cn(
-      "flex flex-col bg-white border-r border-gray-200 transition-all duration-300",
+      "flex flex-col bg-white border-r border-slate-200 transition-all duration-300 font-sans",
       // Desktop: always visible, collapsible
       "hidden md:flex",
-      collapsed ? "md:w-16" : "md:w-64",
+      collapsed ? "md:w-16" : "md:w-[260px]",
       // Mobile: fixed drawer overlay
-      mobileOpen && "fixed inset-y-0 left-0 z-30 flex w-64 shadow-2xl",
+      mobileOpen && "fixed inset-y-0 left-0 z-30 flex w-[260px] shadow-2xl",
     )}>
-      <div className="flex items-center justify-between p-4 border-b">
-        {!collapsed && (
-          <div className="flex items-center space-x-2">
-            <GraduationCap className="h-8 w-8 text-blue-600" />
-            <h1 className="text-sm font-bold text-gray-900">Portal do Educador</h1>
+      <div className="flex items-center justify-between p-4 border-b border-slate-200 h-16">
+        {/*!collapsed && (
+          <div className="flex items-center">
+            <img src={yhankoLogo} alt="Yhanko Logo" className="h-8 w-auto object-contain" />
           </div>
-        )}
+        )*/}
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setCollapsed(!collapsed)}
-          className="h-8 w-8 p-0 bg-transparent"
+          className="h-8 w-8 p-0 bg-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-900"
         >
-          {collapsed ? <ChevronRight /> : <ChevronLeft />}
+          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </Button>
       </div>
 
       <ScrollArea className="flex-1">
-        <nav className={cn("p-2", collapsed && "px-1")}>
-          {menuItems.map((item) => (
-            <Button
-              key={item.id}
-              variant={activeTab === item.id ? "default" : "ghost"}
-              className={cn(
-                "w-full justify-center mb-1 h-10 bg-white text-blue-700 border border-gray-300 hover:text-blue-700",
-                collapsed && "px-2",
-                activeTab === item.id && "bg-blue-600 text-white hover:text-white"
-              )}
-              onClick={() => {
-                onTabChange(item.id)
-                navigate("/" + item.id)
-              }}
-            >
-              <item.icon className={cn("h-4 w-4", !collapsed && "mr-3")} />
-              {!collapsed && (
-                <>
-                  <span className="flex-1 text-left">{item.label}</span>
-                  {item.badge && (
-                    <Badge variant="destructive" className="h-5 w-5 p-0 pl-1 text-xs rounded-full">
-                      {item.badge}
-                    </Badge>
-                  )}
-                </>
-              )}
-            </Button>
-          ))}
+        <nav className={cn("py-4", collapsed ? "px-2" : "px-4")}>
+          {menuItems.map((item) => {
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                className={cn(
+                  "relative flex items-center w-full mb-1 h-10 rounded-md transition-colors text-sm font-medium",
+                  collapsed ? "justify-center px-0" : "px-3",
+                  isActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                )}
+                onClick={() => {
+                  onTabChange(item.id)
+                  navigate("/" + item.id)
+                }}
+              >
+                {/* Active Indicator Bar */}
+                {isActive && !collapsed && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[4px] h-6 bg-primary rounded-r-full" />
+                )}
+                {isActive && collapsed && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-primary rounded-r-full" />
+                )}
+
+                <div className={cn("relative flex items-center justify-center", !collapsed && "mr-3")}>
+                  <item.icon className={cn(
+                    "h-[18px] w-[18px] transition-colors",
+                    isActive ? "text-primary" : "text-slate-400 group-hover:text-slate-600"
+                  )} />
+                </div>
+
+                {!collapsed && (
+                  <>
+                    <span className="flex-1 text-left">{item.label}</span>
+                    {item.badge && (
+                      <Badge variant="sucess" className="h-5 min-w-5 p-0 px-1.5 text-[11px] rounded-full bg-primary text-primary-foreground border-none">
+                        {item.badge}
+                      </Badge>
+                    )}
+                  </>
+                )}
+              </button>
+            )
+          })}
         </nav>
       </ScrollArea>
 
-      <div className="p-4 border-t">
-        <Button
-          variant="destructive"
+      <div className="p-4 border-t border-slate-200">
+        <button
           className={cn(
-            "w-full justify-center h-10 bg-red-50 text-red-600 hover:bg-red-100 border-none shadow-none",
-            collapsed && "px-2"
+            "flex items-center w-full h-10 rounded-md text-sm font-medium transition-colors",
+            "border border-transparent hover:bg-red-50 text-red-600",
+            collapsed ? "justify-center px-0" : "px-3"
           )}
           onClick={logout}
         >
-          <LogOut className={cn("h-4 w-4", !collapsed && "mr-3")} />
-          {!collapsed && <span className="flex-1 text-left font-medium">Sair da Conta</span>}
-        </Button>
+          <LogOut className={cn("h-[18px] w-[18px] text-red-500", !collapsed && "mr-3")} />
+          {!collapsed && <span className="flex-1 text-left">Terminar Sessão</span>}
+        </button>
       </div>
     </div>
   );

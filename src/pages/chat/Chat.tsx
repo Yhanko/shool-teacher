@@ -142,8 +142,8 @@ export function Chat() {
       PARENT:     'bg-gradient-to-br from-orange-500 to-amber-600',
       ADMIN:      'bg-gradient-to-br from-purple-500 to-indigo-600',
       SUPER_ADMIN:'bg-gradient-to-br from-purple-500 to-indigo-600',
-      SECRETARY:  'bg-gradient-to-br from-blue-400 to-cyan-500',
-      TEACHER:    'bg-gradient-to-br from-blue-500 to-indigo-600',
+      SECRETARY:  'bg-gradient-to-br from-purple-400 to-cyan-500',
+      TEACHER:    'bg-gradient-to-br from-purple-500 to-indigo-600',
     };
     return map[role] || 'bg-gradient-to-br from-slate-400 to-slate-600';
   };
@@ -155,7 +155,7 @@ export function Chat() {
         setSelected(c);
         setMobileView('chat');
       }}
-      className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 transition-colors border-b ${selected?.id === c.id ? 'bg-blue-50 border-l-2 border-l-blue-500' : ''}`}
+      className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 transition-colors border-b ${selected?.id === c.id ? 'bg-purple-50 border-l-2 border-l-purple-500' : ''}`}
     >
       <Avatar className="w-10 h-10 flex-shrink-0">
         <AvatarFallback className={`${getAvatarClass(c.role)} text-white text-sm font-bold`}>
@@ -259,7 +259,7 @@ export function Chat() {
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
                 <Avatar>
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold">
+                  <AvatarFallback className="bg-gradient-to-br from-purple-500 to-indigo-600 text-white font-bold">
                     {selected.name?.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -281,9 +281,9 @@ export function Chat() {
                     const isMine = m.senderId === user?.id;
                     return (
                       <div key={m.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3 sm:px-4 py-2 ${isMine ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-800'}`}>
+                        <div className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3 sm:px-4 py-2 ${isMine ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-800'}`}>
                           <p className="text-sm">{m.content}</p>
-                          <p className={`text-xs mt-1 ${isMine ? 'text-blue-200' : 'text-muted-foreground'}`}>
+                          <p className={`text-xs mt-1 ${isMine ? 'text-purple-200' : 'text-muted-foreground'}`}>
                             {new Date(m.createdAt).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>
@@ -302,7 +302,7 @@ export function Chat() {
                   placeholder="Escreva uma mensagem..."
                   className="flex-1"
                 />
-                <Button type="submit" disabled={sending || !newMessage.trim()} size="icon" className="bg-blue-600 flex-shrink-0">
+                <Button type="submit" disabled={sending || !newMessage.trim()} size="icon" className="bg-purple-600 flex-shrink-0">
                   {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 </Button>
               </form>
@@ -310,7 +310,7 @@ export function Chat() {
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8 text-center bg-slate-50/50">
-            <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-4">
+            <div className="w-16 h-16 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mb-4">
               <MessageCircle className="w-8 h-8" />
             </div>
             <h3 className="text-xl font-medium text-slate-800 mb-2">Bem-vindo ao Chat</h3>

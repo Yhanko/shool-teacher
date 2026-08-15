@@ -177,7 +177,7 @@ export function IAAssistant() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold flex items-center">
-            <Bot className="mr-3 h-8 w-8 text-blue-600" />
+            <Bot className="mr-3 h-8 w-8 text-purple-600" />
             Assistente IA Pedagógico
           </h1>
           <p className="text-muted-foreground">Seu parceiro inteligente para análise de alunos e metodologias</p>
@@ -252,7 +252,7 @@ export function IAAssistant() {
 
               {analysisResult && !loadingAnalysis && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-xl border border-purple-100">
+                  <div className="bg-gradient-to-r from-purple-50 to-purple-50 p-6 rounded-xl border border-purple-100">
                     <h3 className="text-xl font-bold flex items-center mb-2">
                       Análise de {analysisResult.studentName}
                       {getStatusBadge(analysisResult.status)}
@@ -343,7 +343,7 @@ export function IAAssistant() {
                   onChange={(e) => setPergunta(e.target.value)}
                   className="min-h-[100px]"
                 />
-                <Button onClick={() => enviarPergunta(pergunta)} disabled={loadingChat || !pergunta.trim()} className="w-full bg-blue-600 hover:bg-blue-700">
+                <Button onClick={() => enviarPergunta(pergunta)} disabled={loadingChat || !pergunta.trim()} className="w-full bg-purple-600 hover:bg-purple-700">
                   {loadingChat ? <><Bot className="mr-2 h-4 w-4 animate-spin" /> Processando...</> : <><Send className="mr-2 h-4 w-4" /> Enviar Pergunta</>}
                 </Button>
 
@@ -356,7 +356,7 @@ export function IAAssistant() {
                         {conversas.map((c) => (
                           <div key={c.id} className="p-4 border rounded-lg space-y-3">
                             <div className="flex items-start space-x-3">
-                              <div className="p-2 bg-blue-100 rounded-full"><Users className="h-4 w-4 text-blue-600" /></div>
+                              <div className="p-2 bg-purple-100 rounded-full"><Users className="h-4 w-4 text-purple-600" /></div>
                               <div className="flex-1">
                                 <p className="font-medium text-sm">{c.pergunta}</p>
                                 <p className="text-xs text-muted-foreground">{c.hora}</p>
@@ -401,7 +401,7 @@ export function IAAssistant() {
               <Card key={index} className="hover:shadow-md transition-shadow">
                 <CardHeader>
                   <CardTitle className="flex items-center">
-                    <recurso.icon className="mr-2 h-5 w-5 text-blue-600" />
+                    <recurso.icon className="mr-2 h-5 w-5 text-purple-600" />
                     {recurso.titulo}
                   </CardTitle>
                   <CardDescription>{recurso.descricao}</CardDescription>

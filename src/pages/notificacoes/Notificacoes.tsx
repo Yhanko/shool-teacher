@@ -80,7 +80,7 @@ export function Notificacoes() {
           </p>
         </div>
         {unreadCount > 0 && (
-          <Button variant="outline" onClick={markAllRead}>
+          <Button onClick={markAllRead}>
             <Check className="mr-2 h-4 w-4" />Marcar todas como lidas
           </Button>
         )}
@@ -110,11 +110,11 @@ export function Notificacoes() {
                         return (
                           <div
                             key={n.id}
-                            className={`flex items-start gap-4 p-4 hover:bg-slate-50 transition-colors cursor-pointer ${!n.isRead ? 'bg-blue-50/50' : ''}`}
+                            className={`flex items-start gap-4 p-4 hover:bg-slate-50 transition-colors cursor-pointer ${!n.isRead ? 'bg-purple-50/50' : ''}`}
                             onClick={() => !n.isRead && markAsRead(n.id)}
                           >
-                            <div className={`p-2 rounded-full flex-shrink-0 ${!n.isRead ? 'bg-blue-100' : 'bg-slate-100'}`}>
-                              <Icon className={`w-5 h-5 ${!n.isRead ? 'text-blue-600' : 'text-slate-500'}`} />
+                            <div className={`p-2 rounded-full flex-shrink-0 ${!n.isRead ? 'bg-purple-100' : 'bg-slate-100'}`}>
+                              <Icon className={`w-5 h-5 ${!n.isRead ? 'text-purple-600' : 'text-slate-500'}`} />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">

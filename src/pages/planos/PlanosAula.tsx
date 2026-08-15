@@ -159,12 +159,12 @@ export function PlanosAula() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <BookOpen className="h-8 w-8 text-blue-600" />
+            <BookOpen className="h-8 w-8 text-purple-600" />
             Planos de Aula
           </h1>
           <p className="text-gray-500">Gestão e submissão de planos metodológicos</p>
         </div>
-        <Button onClick={() => setIsCreating(true)} className="bg-blue-600 hover:bg-blue-700">
+        <Button onClick={() => setIsCreating(true)} className="bg-purple-600 hover:bg-purple-700">
           <Plus className="mr-2 h-4 w-4" /> Novo Plano
         </Button>
       </div>
@@ -342,7 +342,7 @@ export function PlanosAula() {
                       <Download className="h-4 w-4" />
                     </Button>
                     <Button size="icon" variant="ghost" onClick={() => sharePDF(plan)} disabled={sharingId === plan.id} title="Partilhar com a Direção">
-                      {sharingId === plan.id ? <Loader2 className="h-4 w-4 animate-spin text-blue-600" /> : <Share2 className="h-4 w-4 text-blue-600" />}
+                      {sharingId === plan.id ? <Loader2 className="h-4 w-4 animate-spin text-purple-600" /> : <Share2 className="h-4 w-4 text-purple-600" />}
                     </Button>
                   </TableCell>
                 </TableRow>

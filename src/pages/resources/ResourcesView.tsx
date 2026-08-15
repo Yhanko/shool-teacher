@@ -158,7 +158,7 @@ export function ResourcesView() {
   const getIconForType = (type: string) => {
     switch (type) {
       case 'pdf': return <FileText className="w-5 h-5 text-red-500" />;
-      case 'video': return <Video className="w-5 h-5 text-blue-500" />;
+      case 'video': return <Video className="w-5 h-5 text-purple-500" />;
       case 'book': return <BookOpen className="w-5 h-5 text-amber-500" />;
       case 'link': return <LinkIcon className="w-5 h-5 text-green-500" />;
       default: return <FileText className="w-5 h-5 text-gray-500" />;

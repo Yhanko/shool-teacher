@@ -109,14 +109,14 @@ export function ProfileView() {
           <Card>
             <CardContent className="p-6 text-center">
               <div className="relative inline-block mb-4">
-                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-4xl font-bold mx-auto">
+                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-4xl font-bold mx-auto">
                   {initials}
                 </div>
               </div>
               <h2 className="text-xl font-bold">{displayProfile?.name}</h2>
               <p className="text-muted-foreground text-sm mt-1">{displayProfile?.email}</p>
               <div className="mt-3">
-                <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
+                <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">
                   {displayProfile?.role === 'TEACHER' ? 'Professor' : displayProfile?.role}
                 </span>
               </div>
@@ -195,7 +195,7 @@ export function ProfileView() {
               <p className="text-sm text-muted-foreground mb-4">Altere a sua senha para manter a conta segura.</p>
               <Dialog open={pwDialogOpen} onOpenChange={setPwDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline"><Lock className="w-4 h-4 mr-2" />Alterar Senha</Button>
+                  <Button><Lock className="w-4 h-4 mr-2" />Alterar Senha</Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader><DialogTitle>Alterar Senha</DialogTitle></DialogHeader>

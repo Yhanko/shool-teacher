@@ -116,23 +116,20 @@ export function Login() {
   };
 
   return (
-    <div className="w-[100vw] min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900">
+    <div className="w-[100vw] min-h-screen flex items-center justify-center p-4 bg-background">
       {/* Background decorations */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl" />
         <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-blue-600/5 rounded-full blur-2xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-purple-600/5 rounded-full blur-2xl" />
       </div>
 
-      <Card className="w-full max-w-md relative z-10 shadow-2xl border-white/10 backdrop-blur-sm bg-slate-900/80">
+      <Card className="w-full max-w-md relative z-10 shadow-2xl border-slate-200 backdrop-blur-sm bg-slate-50">
         <CardHeader className="text-center space-y-4 pb-2">
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-            <GraduationCap className="w-8 h-8 text-white" />
-          </div>
           <div>
-            <CardTitle className="text-2xl font-bold text-white">Portal do Professor</CardTitle>
-            <CardDescription className="mt-1 text-slate-400">
-              {isRecovering 
+            <CardTitle className="text-2xl font-bold text-slate-900">Portal do Professor</CardTitle>
+            <CardDescription className="mt-1 text-slate-500">
+              {isRecovering
                 ? (recoveryStep === 1 ? <span key="step1">Recuperação de conta</span> : <span key="step2">Definir nova senha</span>)
                 : <span key="login-desc">YhankoEduca — Acesso restrito a professores</span>
               }
@@ -142,74 +139,74 @@ export function Login() {
 
         <CardContent className="pt-4">
           {!isRecovering ? (
-          <form key="login-form" className="space-y-5" onSubmit={handleSubmit}>
-            {error && (
-              <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
-                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-slate-300">Email institucional</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="professor@escola.ao"
-                  className="pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-blue-500"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-slate-300">Senha</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  className="pl-10 pr-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-blue-500"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-slate-500 hover:text-slate-300 hover:bg-slate-700/50 transition-colors flex items-center justify-center"
-                >
-                  {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                </button>
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold h-11 transition-all duration-200 shadow-lg shadow-blue-500/20"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  <span key="loading">A entrar...</span>
-                </>
-              ) : (
-                <span key="idle">Entrar no Portal</span>
+            <form key="login-form" className="space-y-5" onSubmit={handleSubmit}>
+              {error && (
+                <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
+                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <span>{error}</span>
+                </div>
               )}
-            </Button>
 
-            <p className="text-center text-xs text-slate-500">
-              As suas credenciais foram fornecidas pelo administrador da escola.
-              <br />
-              Se não as tiver, contacte a secretaria.
-            </p>
-          </form>
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-slate-700">Email institucional</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="professor@escola.ao"
+                    className="pl-10 bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-purple-500"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-slate-700">Senha</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    className="pl-10 pr-10 bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-purple-500"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-center"
+                  >
+                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-11 transition-all duration-200 shadow-lg shadow-purple-500/20"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <span key="loading">A entrar...</span>
+                  </>
+                ) : (
+                  <span key="idle">Entrar no Portal</span>
+                )}
+              </Button>
+
+              <p className="text-center text-xs text-slate-500">
+                As suas credenciais foram fornecidas pelo administrador da escola.
+                <br />
+                Se não as tiver, contacte a secretaria.
+              </p>
+            </form>
           ) : recoveryStep === 1 ? (
             <form key="verify-form" className="space-y-5" onSubmit={handleVerifyEmail}>
               {error && (
@@ -219,14 +216,14 @@ export function Login() {
                 </div>
               )}
               <div className="space-y-2">
-                <Label htmlFor="recovery-email" className="text-slate-300">Email da Conta</Label>
+                <Label htmlFor="recovery-email" className="text-slate-700">Email da Conta</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <Input
                     id="recovery-email"
                     type="email"
                     placeholder="seu@email.com"
-                    className="pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-blue-500"
+                    className="pl-10 bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-purple-500"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -236,7 +233,7 @@ export function Login() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold h-11 transition-all duration-200 shadow-lg shadow-blue-500/20"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-11 transition-all duration-200 shadow-lg shadow-purple-500/20"
               >
                 {isLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> <span key="loading">A verificar...</span></> : <span key="idle">Verificar Conta</span>}
               </Button>
@@ -250,14 +247,14 @@ export function Login() {
                 </div>
               )}
               <div className="space-y-2">
-                <Label htmlFor="new-password" className="text-slate-300">Nova Senha</Label>
+                <Label htmlFor="new-password" className="text-slate-700">Nova Senha</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <Input
                     id="new-password"
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
-                    className="pl-10 pr-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-blue-500"
+                    className="pl-10 pr-10 bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-purple-500"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     required
@@ -265,21 +262,21 @@ export function Login() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-slate-500 hover:text-slate-300 hover:bg-slate-700/50 transition-colors flex items-center justify-center"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-center"
                   >
                     {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </button>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirm-password" className="text-slate-300">Confirmar Nova Senha</Label>
+                <Label htmlFor="confirm-password" className="text-slate-700">Confirmar Nova Senha</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <Input
                     id="confirm-password"
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
-                    className="pl-10 pr-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-blue-500"
+                    className="pl-10 pr-10 bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-purple-500"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
@@ -289,20 +286,20 @@ export function Login() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold h-11 transition-all duration-200 shadow-lg shadow-blue-500/20"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-11 transition-all duration-200 shadow-lg shadow-purple-500/20"
               >
                 {isLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> <span key="loading">A redefinir...</span></> : <span key="idle">Redefinir Senha</span>}
               </Button>
             </form>
           )}
         </CardContent>
-        <CardFooter className="flex justify-center border-t border-white/10 pt-4">
+        <CardFooter className="flex justify-center border-t border-slate-200 pt-4">
           {!isRecovering ? (
-            <Button key="forgot-btn" variant="link" className="text-sm text-slate-300 hover:text-white p-0" onClick={() => setIsRecovering(true)}>
+            <Button key="forgot-btn" variant="link" className="text-sm text-slate-600 hover:text-slate-900 p-0" onClick={() => setIsRecovering(true)}>
               Esqueceu a sua senha?
             </Button>
           ) : (
-            <Button key="back-btn" variant="link" className="text-sm text-slate-400 hover:text-white flex items-center gap-1 p-0" onClick={() => { setIsRecovering(false); setRecoveryStep(1); setError(""); }}>
+            <Button key="back-btn" variant="link" className="text-sm text-slate-600 hover:text-slate-900 flex items-center gap-1 p-0" onClick={() => { setIsRecovering(false); setRecoveryStep(1); setError(""); }}>
               <ArrowLeft className="w-4 h-4" /> Voltar ao Login
             </Button>
           )}

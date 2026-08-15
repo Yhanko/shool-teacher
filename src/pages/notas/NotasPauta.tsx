@@ -313,7 +313,7 @@ export function NotasPauta() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <GraduationCap className="h-8 w-8 text-blue-600" />
+            <GraduationCap className="h-8 w-8 text-purple-600" />
             Notas & Pauta
           </h1>
           <p className="text-gray-500">Registo de Avaliações Contínuas e Provas</p>
@@ -333,7 +333,7 @@ export function NotasPauta() {
           )}
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-green-600 hover:bg-green-500 text-white">
+              <Button>
                 <Plus className="mr-2 h-4 w-4" />Lançar Notas
               </Button>
             </DialogTrigger>

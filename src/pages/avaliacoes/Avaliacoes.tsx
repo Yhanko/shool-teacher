@@ -217,12 +217,12 @@ export function Avaliacoes() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <FileSignature className="h-8 w-8 text-blue-600" />
+            <FileSignature className="h-8 w-8 text-purple-600" />
             Fichas de Avaliação
           </h1>
           <p className="text-gray-500">Crie provas oficiais e imprima em formato Angolano</p>
         </div>
-        <Button onClick={() => setIsCreating(true)} className="bg-blue-600 hover:bg-blue-700">
+        <Button onClick={() => setIsCreating(true)} className="bg-purple-600 hover:bg-purple-700">
           <Plus className="mr-2 h-4 w-4" /> Nova Avaliação
         </Button>
       </div>
@@ -383,7 +383,7 @@ export function Avaliacoes() {
                       <Download className="h-4 w-4" />
                     </Button>
                     <Button size="icon" variant="ghost" onClick={() => sharePDF(exam.id)} disabled={sharingId === exam.id} title="Partilhar com a Direção">
-                      {sharingId === exam.id ? <Loader2 className="h-4 w-4 animate-spin text-blue-600" /> : <Share2 className="h-4 w-4 text-blue-600" />}
+                      {sharingId === exam.id ? <Loader2 className="h-4 w-4 animate-spin text-purple-600" /> : <Share2 className="h-4 w-4 text-purple-600" />}
                     </Button>
                   </TableCell>
                 </TableRow>
