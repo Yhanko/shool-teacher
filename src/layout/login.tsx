@@ -3,35 +3,69 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Mail, Lock, Eye, EyeOff, GraduationCap, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { AxiosError } from "axios";
 import api from "@/services/api/axios";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+const loginSchema = z.object({
+  email: z.string().email("E-mail inválido.").max(100, "O e-mail é demasiado longo."),
+  password: z.string().min(1, "A senha é obrigatória.").max(100, "A senha é demasiado longa."),
+});
+
+const verifyEmailSchema = z.object({
+  email: z.string().email("E-mail inválido.").max(100, "O e-mail é demasiado longo."),
+});
+
+const resetPasswordSchema = z.object({
+  newPassword: z.string().min(6, "A senha deve ter pelo menos 6 caracteres.").max(100, "A senha é demasiado longa."),
+  confirmPassword: z.string().min(6, "A senha deve ter pelo menos 6 caracteres.")
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "As senhas não coincidem.",
+  path: ["confirmPassword"],
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
+type VerifyEmailFormValues = z.infer<typeof verifyEmailSchema>;
+type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 
 export function Login() {
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   // Recovery State
   const [isRecovering, setIsRecovering] = useState(false);
   const [recoveryStep, setRecoveryStep] = useState<1 | 2>(1);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
 
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const loginForm = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: "", password: "" },
+  });
+
+  const verifyForm = useForm<VerifyEmailFormValues>({
+    resolver: zodResolver(verifyEmailSchema),
+    defaultValues: { email: "" },
+  });
+
+  const resetForm = useForm<ResetPasswordFormValues>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: { newPassword: "", confirmPassword: "" },
+  });
+
+  const onLoginSubmit = async (data: LoginFormValues) => {
     setError("");
     setIsLoading(true);
 
     try {
-      const response = await api.post("/auth/login", { email, password });
+      const response = await api.post("/auth/login", data);
       const { access_token } = response.data;
 
       const userProfile = await api.get('/users/me', {
@@ -61,17 +95,11 @@ export function Login() {
     }
   };
 
-  const handleVerifyEmail = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onVerifyEmailSubmit = async (data: VerifyEmailFormValues) => {
     setError("");
-    if (!email) {
-      setError("Por favor, insira o seu email.");
-      return;
-    }
-
     try {
       setIsLoading(true);
-      await api.post("/auth/verify-email", { email, role: 'TEACHER' });
+      await api.post("/auth/verify-email", { email: data.email, role: 'TEACHER' });
       setRecoveryStep(2);
     } catch (err: unknown) {
       const axiosErr = err as AxiosError<{ message?: string }>;
@@ -81,30 +109,19 @@ export function Login() {
     }
   };
 
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onResetPasswordSubmit = async (data: ResetPasswordFormValues) => {
     setError("");
-    if (!newPassword || !confirmPassword) {
-      setError("Por favor, preencha todos os campos.");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setError("As senhas não coincidem.");
-      return;
-    }
-    if (newPassword.length < 6) {
-      setError("A senha deve ter pelo menos 6 caracteres.");
-      return;
-    }
-
     try {
       setIsLoading(true);
-      await api.post("/auth/reset-password", { email, role: 'TEACHER', newPassword });
+      const email = verifyForm.getValues("email");
+      await api.post("/auth/reset-password", { email, role: 'TEACHER', newPassword: data.newPassword });
       setIsRecovering(false);
       setRecoveryStep(1);
-      setPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+      
+      loginForm.reset();
+      verifyForm.reset();
+      resetForm.reset();
+      
       setError("");
       alert("Senha alterada com sucesso! Faça login.");
     } catch (err: unknown) {
@@ -139,7 +156,7 @@ export function Login() {
 
         <CardContent className="pt-4">
           {!isRecovering ? (
-            <form key="login-form" className="space-y-5" onSubmit={handleSubmit}>
+            <form key="login-form" className="space-y-5" onSubmit={loginForm.handleSubmit(onLoginSubmit)}>
               {error && (
                 <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
                   <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
@@ -155,12 +172,13 @@ export function Login() {
                     id="email"
                     type="email"
                     placeholder="professor@escola.ao"
-                    className="pl-10 bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-purple-500"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
+                    className={`pl-10 bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-purple-500 ${loginForm.formState.errors.email ? 'border-red-500 focus:border-red-500' : ''}`}
+                    {...loginForm.register("email")}
                   />
                 </div>
+                {loginForm.formState.errors.email && (
+                  <p className="text-sm text-red-500 mt-1">{loginForm.formState.errors.email.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -171,10 +189,8 @@ export function Login() {
                     id="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
-                    className="pl-10 pr-10 bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-purple-500"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
+                    className={`pl-10 pr-10 bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-purple-500 ${loginForm.formState.errors.password ? 'border-red-500 focus:border-red-500' : ''}`}
+                    {...loginForm.register("password")}
                   />
                   <button
                     type="button"
@@ -184,6 +200,9 @@ export function Login() {
                     {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </button>
                 </div>
+                {loginForm.formState.errors.password && (
+                  <p className="text-sm text-red-500 mt-1">{loginForm.formState.errors.password.message}</p>
+                )}
               </div>
 
               <Button
@@ -208,7 +227,7 @@ export function Login() {
               </p>
             </form>
           ) : recoveryStep === 1 ? (
-            <form key="verify-form" className="space-y-5" onSubmit={handleVerifyEmail}>
+            <form key="verify-form" className="space-y-5" onSubmit={verifyForm.handleSubmit(onVerifyEmailSubmit)}>
               {error && (
                 <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
                   <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
@@ -223,12 +242,13 @@ export function Login() {
                     id="recovery-email"
                     type="email"
                     placeholder="seu@email.com"
-                    className="pl-10 bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-purple-500"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
+                    className={`pl-10 bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-purple-500 ${verifyForm.formState.errors.email ? 'border-red-500 focus:border-red-500' : ''}`}
+                    {...verifyForm.register("email")}
                   />
                 </div>
+                {verifyForm.formState.errors.email && (
+                  <p className="text-sm text-red-500 mt-1">{verifyForm.formState.errors.email.message}</p>
+                )}
               </div>
               <Button
                 type="submit"
@@ -239,7 +259,7 @@ export function Login() {
               </Button>
             </form>
           ) : (
-            <form key="reset-form" className="space-y-5" onSubmit={handleResetPassword}>
+            <form key="reset-form" className="space-y-5" onSubmit={resetForm.handleSubmit(onResetPasswordSubmit)}>
               {error && (
                 <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
                   <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
@@ -254,10 +274,8 @@ export function Login() {
                     id="new-password"
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
-                    className="pl-10 pr-10 bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-purple-500"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    required
+                    className={`pl-10 pr-10 bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-purple-500 ${resetForm.formState.errors.newPassword ? 'border-red-500 focus:border-red-500' : ''}`}
+                    {...resetForm.register("newPassword")}
                   />
                   <button
                     type="button"
@@ -267,6 +285,9 @@ export function Login() {
                     {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </button>
                 </div>
+                {resetForm.formState.errors.newPassword && (
+                  <p className="text-sm text-red-500 mt-1">{resetForm.formState.errors.newPassword.message}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirm-password" className="text-slate-700">Confirmar Nova Senha</Label>
@@ -276,12 +297,13 @@ export function Login() {
                     id="confirm-password"
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
-                    className="pl-10 pr-10 bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-purple-500"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
+                    className={`pl-10 pr-10 bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-purple-500 ${resetForm.formState.errors.confirmPassword ? 'border-red-500 focus:border-red-500' : ''}`}
+                    {...resetForm.register("confirmPassword")}
                   />
                 </div>
+                {resetForm.formState.errors.confirmPassword && (
+                  <p className="text-sm text-red-500 mt-1">{resetForm.formState.errors.confirmPassword.message}</p>
+                )}
               </div>
               <Button
                 type="submit"

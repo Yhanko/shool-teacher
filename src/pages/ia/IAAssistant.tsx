@@ -103,13 +103,21 @@ export function IAAssistant() {
 
   const fetchClasses = async () => {
     try {
-      const res = await api.get(`/classes/teacher/${user!.id}`);
+      // /classes/my-classes returns classes with enrolled students included
+      const res = await api.get('/classes/my-classes');
       setClasses(res.data || []);
       if (res.data?.length > 0) {
         setSelectedClass(res.data[0].id);
       }
     } catch (e) {
-      console.error('Failed to fetch classes', e);
+      // Fallback
+      try {
+        const res2 = await api.get(`/classes/teacher/${user!.id}`);
+        setClasses(res2.data || []);
+        if (res2.data?.length > 0) setSelectedClass(res2.data[0].id);
+      } catch (e2) {
+        console.error('Failed to fetch classes', e2);
+      }
     }
   };
 

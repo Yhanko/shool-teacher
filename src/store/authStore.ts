@@ -7,12 +7,18 @@ interface User {
   email: string;
   role: string;
   institutionId: string;
+  employeeProfile?: {
+    photoUrl?: string;
+    phone?: string;
+    [key: string]: any;
+  };
 }
 
 interface AuthState {
   user: User | null;
   token: string | null;
   setAuth: (user: User, token: string) => void;
+  updateUser: (updates: Partial<User>) => void;
   logout: () => void;
 }
 
@@ -43,6 +49,15 @@ export const useAuthStore = create<AuthState>((set) => ({
     Cookies.set(TOKEN_KEY, token, { expires: 7, path: '/' });
     Cookies.set(USER_KEY, JSON.stringify(user), { expires: 7, path: '/' });
     set({ user, token });
+  },
+
+  updateUser: (updates) => {
+    set((state) => {
+      if (!state.user) return state;
+      const updatedUser = { ...state.user, ...updates };
+      Cookies.set(USER_KEY, JSON.stringify(updatedUser), { expires: 7, path: '/' });
+      return { user: updatedUser };
+    });
   },
 
   logout: () => {

@@ -1,4 +1,4 @@
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -24,6 +24,14 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
     logout();
     navigate('/');
   };
+
+  const getPhotoUrl = (url: string | null | undefined) => {
+    if (!url) return null;
+    if (url.startsWith('http')) return url;
+    return `${import.meta.env.VITE_API_URL || ''}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
+  const resolvedPhotoUrl = getPhotoUrl(user?.employeeProfile?.photoUrl);
 
   return (
     <header className="bg-white border-b border-gray-200 px-3 sm:px-6 py-3 sm:py-4">
@@ -59,6 +67,9 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10">
+                  {resolvedPhotoUrl && (
+                    <AvatarImage src={resolvedPhotoUrl} alt={user?.name || ''} className="object-cover" />
+                  )}
                   <AvatarFallback className="bg-gradient-to-br from-purple-500 to-indigo-600 text-white font-bold">
                     {initials}
                   </AvatarFallback>

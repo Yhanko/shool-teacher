@@ -54,17 +54,36 @@ export function Avaliacoes() {
 
   const fetchClasses = async () => {
     try {
-      const res = await api.get(`/classes/teacher/${user!.id}`);
+      const res = await api.get('/classes/my-classes');
       setClasses(res.data || []);
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+      // Fallback
+      try {
+        const res2 = await api.get(`/classes/teacher/${user!.id}`);
+        setClasses(res2.data || []);
+      } catch (e2) { console.error(e2); }
+    }
   };
 
   const handleClassChange = async (classId: string) => {
     setFormData(prev => ({ ...prev, classId, subjectId: '' }));
+    setSubjects([]);
     try {
-      const res = await api.get(`/classes/${classId}/subjects`);
-      setSubjects(res.data.map((c: any) => c.subject));
-    } catch (e) { console.error(e); }
+      // Get only subjects this teacher teaches in this class
+      const res = await api.get(`/classes/${classId}/subjects/teacher`);
+      if (res.data && res.data.length > 0) {
+        setSubjects(res.data);
+      } else {
+        // Fallback: all subjects of the class
+        const fallback = await api.get(`/classes/${classId}/subjects`);
+        setSubjects((fallback.data || []).map((c: any) => c.subject).filter(Boolean));
+      }
+    } catch (e) {
+      try {
+        const fallback = await api.get(`/classes/${classId}/subjects`);
+        setSubjects((fallback.data || []).map((c: any) => c.subject).filter(Boolean));
+      } catch (e2) { console.error(e2); }
+    }
   };
 
   const addQuestion = () => {

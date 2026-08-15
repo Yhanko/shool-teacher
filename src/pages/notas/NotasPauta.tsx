@@ -180,25 +180,44 @@ export function NotasPauta() {
 
   const fetchSubjects = async () => {
     try {
-      const res = await api.get(`/classes/${selectedClass!.id}/subjects`);
-      const subs = res.data.map((cs: any) => cs.subject);
-      setSubjects(subs);
-      if (subs.length > 0) {
-        setSelectedSubject(subs[0].id);
+      // Get only subjects this teacher teaches in this class
+      const res = await api.get(`/classes/${selectedClass!.id}/subjects/teacher`);
+      if (res.data && res.data.length > 0) {
+        setSubjects(res.data);
+        setSelectedSubject(res.data[0].id);
       } else {
-        setSelectedSubject('');
-        setGrades([]); // clear grades if no subjects
+        const fallback = await api.get(`/classes/${selectedClass!.id}/subjects`);
+        const subs = (fallback.data || []).map((cs: any) => cs.subject).filter(Boolean);
+        setSubjects(subs);
+        if (subs.length > 0) setSelectedSubject(subs[0].id);
+        else { setSelectedSubject(''); setGrades([]); }
       }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      try {
+        const fallback = await api.get(`/classes/${selectedClass!.id}/subjects`);
+        const subs = (fallback.data || []).map((cs: any) => cs.subject).filter(Boolean);
+        setSubjects(subs);
+        if (subs.length > 0) setSelectedSubject(subs[0].id);
+        else { setSelectedSubject(''); setGrades([]); }
+      } catch (e2) { console.error(e2); }
+    }
   };
 
   const fetchClasses = async () => {
     try {
-      const res = await api.get(`/classes/teacher/${user!.id}`);
+      // /classes/my-classes returns classes with enrolled students included
+      const res = await api.get('/classes/my-classes');
       const data = res.data || [];
       setClasses(data);
       if (data.length > 0) setSelectedClass(data[0]);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      try {
+        const res2 = await api.get(`/classes/teacher/${user!.id}`);
+        const data = res2.data || [];
+        setClasses(data);
+        if (data.length > 0) setSelectedClass(data[0]);
+      } catch (e2) { console.error(e2); }
+    }
     finally { setLoading(false); }
   };
 

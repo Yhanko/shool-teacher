@@ -64,17 +64,40 @@ export function PlanosAula() {
 
   const fetchClasses = async () => {
     try {
-      const res = await api.get(`/classes/teacher/${user!.id}`);
+      // Use my-classes endpoint (uses JWT sub, no need for user.id)
+      const res = await api.get('/classes/my-classes');
       setClasses(res.data || []);
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+      console.error('Error fetching teacher classes:', e);
+      // Fallback to teacher-specific endpoint
+      try {
+        const res2 = await api.get(`/classes/teacher/${user!.id}`);
+        setClasses(res2.data || []);
+      } catch (e2) { console.error(e2); }
+    }
   };
 
   const handleClassChange = async (classId: string) => {
     setFormData(prev => ({ ...prev, classId, subjectId: '' }));
+    setSubjects([]);
     try {
-      const res = await api.get(`/classes/${classId}/subjects`);
-      setSubjects(res.data.map((c: any) => c.subject));
-    } catch (e) { console.error(e); }
+      // Get only the subjects this teacher teaches in this class
+      const res = await api.get(`/classes/${classId}/subjects/teacher`);
+      if (res.data && res.data.length > 0) {
+        setSubjects(res.data); // endpoint returns Subject[] directly
+      } else {
+        // Fallback: get all subjects of the class
+        const fallback = await api.get(`/classes/${classId}/subjects`);
+        setSubjects((fallback.data || []).map((c: any) => c.subject).filter(Boolean));
+      }
+    } catch (e) { 
+      console.error('Error fetching subjects:', e);
+      // Fallback: get all subjects of the class
+      try {
+        const fallback = await api.get(`/classes/${classId}/subjects`);
+        setSubjects((fallback.data || []).map((c: any) => c.subject).filter(Boolean));
+      } catch (e2) { console.error(e2); }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

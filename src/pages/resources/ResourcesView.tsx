@@ -11,6 +11,41 @@ import { ptBR } from 'date-fns/locale';
 import api from '@/services/api/axios';
 import { toast } from 'sonner';
 
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+
+const resourceSchema = z.object({
+  title: z.string().min(3, "O título deve ter pelo menos 3 caracteres.").max(100, "O título é demasiado longo."),
+  description: z.string().max(300, "A descrição é demasiado longa.").optional().or(z.literal("")),
+  type: z.enum(["pdf", "image", "video", "book", "link"]),
+  url: z.string().optional().or(z.literal("")),
+  classId: z.string().optional().or(z.literal("")),
+  subjectId: z.string().optional().or(z.literal("")),
+}).superRefine((data, ctx) => {
+  if (data.type !== 'pdf' && data.type !== 'image') {
+    if (!data.url || data.url.trim() === '') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "O URL é obrigatório para este tipo de recurso.",
+        path: ["url"]
+      });
+    } else {
+      try {
+        new URL(data.url);
+      } catch (e) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Formato de URL inválido. Use http:// ou https://",
+          path: ["url"]
+        });
+      }
+    }
+  }
+});
+
+type ResourceFormValues = z.infer<typeof resourceSchema>;
+
 interface Resource {
   id: string;
   title: string;
@@ -40,18 +75,23 @@ export function ResourcesView() {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   
-  // Create resource state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [newResource, setNewResource] = useState({
-    title: '',
-    description: '',
-    type: 'pdf',
-    url: '',
-    classId: '',
-    subjectId: ''
+
+  const form = useForm<ResourceFormValues>({
+    resolver: zodResolver(resourceSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      type: 'pdf',
+      url: '',
+      classId: '',
+      subjectId: ''
+    }
   });
+  
+  const resourceType = form.watch('type');
 
   useEffect(() => {
     fetchResources();
@@ -83,46 +123,31 @@ export function ResourcesView() {
     }
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newResource.title) return;
-    
-    // Validate if it's file or link
-    const isFile = newResource.type === 'pdf' || newResource.type === 'image';
+  const onSubmit = async (data: ResourceFormValues) => {
+    const isFile = data.type === 'pdf' || data.type === 'image';
     if (isFile && !selectedFile) {
       toast.error('Por favor, selecione um ficheiro para upload.');
       return;
     }
-    if (!isFile) {
-      if (!newResource.url) {
-        toast.error('Por favor, insira o URL do recurso.');
-        return;
-      }
-      try {
-        new URL(newResource.url);
-      } catch (e) {
-        toast.error('URL inválido. Certifique-se que começa com http:// ou https://');
-        return;
-      }
-    }
     
     setIsCreating(true);
     try {
-      let finalUrl = newResource.url;
+      let finalUrl = data.url;
       
-      // Se for ficheiro, fazer upload para o cloudinary
       if (isFile && selectedFile) {
         const formData = new FormData();
         formData.append('file', selectedFile);
         const uploadRes = await api.post('/uploads/cloudinary', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
-        finalUrl = uploadRes.data.url;
+        
+        // FIX: The backend returns the Cloudinary url inside 'path', not 'url'
+        finalUrl = uploadRes.data.path;
       }
 
-      await api.post('/resources', { ...newResource, url: finalUrl });
+      await api.post('/resources', { ...data, url: finalUrl });
       setIsDialogOpen(false);
-      setNewResource({ title: '', description: '', type: 'pdf', url: '', classId: '', subjectId: '' });
+      form.reset();
       setSelectedFile(null);
       toast.success('Recurso partilhado com sucesso!');
       fetchResources();
@@ -158,6 +183,7 @@ export function ResourcesView() {
   const getIconForType = (type: string) => {
     switch (type) {
       case 'pdf': return <FileText className="w-5 h-5 text-red-500" />;
+      case 'image': return <FileText className="w-5 h-5 text-blue-500" />;
       case 'video': return <Video className="w-5 h-5 text-purple-500" />;
       case 'book': return <BookOpen className="w-5 h-5 text-amber-500" />;
       case 'link': return <LinkIcon className="w-5 h-5 text-green-500" />;
@@ -182,32 +208,37 @@ export function ResourcesView() {
               <DialogTitle>Partilhar Novo Recurso</DialogTitle>
               <DialogDescription>Adicione um ficheiro, livro ou vídeo para partilhar com a escola.</DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleCreate} className="space-y-4 pt-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
               <div className="space-y-2">
                 <Label>Título do Recurso</Label>
-                <Input value={newResource.title} onChange={e => setNewResource({...newResource, title: e.target.value})} placeholder="Ex: Livro de Matemática 10º Ano" required />
+                <Input 
+                  placeholder="Ex: Livro de Matemática 10º Ano" 
+                  className={form.formState.errors.title ? 'border-red-500' : ''}
+                  {...form.register("title")} 
+                />
+                {form.formState.errors.title && (
+                  <p className="text-xs text-red-500">{form.formState.errors.title.message}</p>
+                )}
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Turma</Label>
                   <select 
-                    value={newResource.classId} 
-                    onChange={e => setNewResource({...newResource, classId: e.target.value})}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    className={`flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${form.formState.errors.classId ? 'border-red-500' : 'border-input'}`}
+                    {...form.register("classId")}
                   >
-                    <option value="">Selecione uma Turma</option>
+                    <option value="">Geral (Toda a escola)</option>
                     {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
                 <div className="space-y-2">
                   <Label>Disciplina</Label>
                   <select 
-                    value={newResource.subjectId} 
-                    onChange={e => setNewResource({...newResource, subjectId: e.target.value})}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    className={`flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${form.formState.errors.subjectId ? 'border-red-500' : 'border-input'}`}
+                    {...form.register("subjectId")}
                   >
-                    <option value="">Selecione uma Disciplina</option>
+                    <option value="">Geral (Sem disciplina específica)</option>
                     {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 </div>
@@ -217,12 +248,14 @@ export function ResourcesView() {
                 <div className="space-y-2">
                   <Label>Tipo</Label>
                   <select 
-                    value={newResource.type} 
-                    onChange={e => {
-                      setNewResource({...newResource, type: e.target.value, url: ''});
-                      setSelectedFile(null);
-                    }}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    className={`flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${form.formState.errors.type ? 'border-red-500' : 'border-input'}`}
+                    {...form.register("type", {
+                      onChange: () => {
+                        form.setValue('url', '');
+                        setSelectedFile(null);
+                        form.clearErrors('url');
+                      }
+                    })}
                   >
                     <option value="pdf">Ficheiro (PDF)</option>
                     <option value="image">Imagem</option>
@@ -232,14 +265,13 @@ export function ResourcesView() {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  {(newResource.type === 'pdf' || newResource.type === 'image') ? (
+                  {(resourceType === 'pdf' || resourceType === 'image') ? (
                     <>
                       <Label>Selecionar Ficheiro</Label>
                       <Input 
                         type="file" 
-                        accept={newResource.type === 'pdf' ? '.pdf' : 'image/*'} 
+                        accept={resourceType === 'pdf' ? '.pdf' : 'image/*'} 
                         onChange={e => setSelectedFile(e.target.files?.[0] || null)} 
-                        required={!selectedFile}
                       />
                     </>
                   ) : (
@@ -247,23 +279,38 @@ export function ResourcesView() {
                       <Label>URL (Link)</Label>
                       <Input 
                         type="url"
-                        value={newResource.url} 
-                        onChange={e => setNewResource({...newResource, url: e.target.value})} 
                         placeholder="https://..." 
-                        required 
+                        className={form.formState.errors.url ? 'border-red-500' : ''}
+                        {...form.register("url")} 
                       />
+                      {form.formState.errors.url && (
+                        <p className="text-xs text-red-500">{form.formState.errors.url.message}</p>
+                      )}
                     </>
                   )}
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Descrição</Label>
-                <Input value={newResource.description} onChange={e => setNewResource({...newResource, description: e.target.value})} placeholder="Breve descrição do material" />
+                <Input 
+                  placeholder="Breve descrição do material" 
+                  className={form.formState.errors.description ? 'border-red-500' : ''}
+                  {...form.register("description")} 
+                />
+                {form.formState.errors.description && (
+                  <p className="text-xs text-red-500">{form.formState.errors.description.message}</p>
+                )}
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+                <Button type="button" variant="outline" onClick={() => {
+                  setIsDialogOpen(false);
+                  form.reset();
+                  setSelectedFile(null);
+                }}>Cancelar</Button>
                 <Button type="submit" disabled={isCreating}>
-                  {isCreating ? 'A partilhar...' : 'Partilhar'}
+                  {isCreating ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> A partilhar...</>
+                  ) : 'Partilhar'}
                 </Button>
               </div>
             </form>
@@ -291,6 +338,7 @@ export function ResourcesView() {
               >
                 <option value="all">Todos os tipos</option>
                 <option value="pdf">Documentos (PDF)</option>
+                <option value="image">Imagens</option>
                 <option value="video">Vídeos</option>
                 <option value="book">Livros</option>
                 <option value="link">Links Úteis</option>
@@ -320,7 +368,7 @@ export function ResourcesView() {
                           {resource.title}
                         </CardTitle>
                         <CardDescription className="truncate text-xs">
-                          {resource.subject?.name || 'Geral'} • {resource.class?.name || 'Todas as turmas'}
+                          {resource.subject?.name || 'Geral'} • {resource.class?.name || 'Geral'}
                         </CardDescription>
                       </div>
                     </div>
