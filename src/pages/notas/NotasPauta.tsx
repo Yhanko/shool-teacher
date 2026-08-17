@@ -173,6 +173,12 @@ function GradeForm({ classInfo, students, subjects, onSuccess }: { classInfo: Cl
         >
           <option value="AC">Avaliação Contínua (AC)</option>
           <option value="NPT">Nota da Prova Trimestral (NPT)</option>
+          <option value="EX">Exame Final (EX)</option>
+          <option value="NEE">Nota do Exame Escrito (NEE)</option>
+          <option value="NEP">Nota do Exame Prático (NEP)</option>
+          <option value="NEO">Nota do Exame Oral (NEO)</option>
+          <option value="MENC">Média do Exame Combinado (MENC)</option>
+          <option value="MFD">Média Final da Disciplina (MFD)</option>
         </select>
       </div>
       <Button type="submit" disabled={loading} className="w-full bg-green-600 hover:bg-green-500">

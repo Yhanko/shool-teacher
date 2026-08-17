@@ -449,9 +449,9 @@ export function Avaliacoes() {
               <div className="border border-gray-400 p-3 w-1/4 text-center flex flex-col">
                 <strong>Classificação:</strong>
                 <div className="mt-4 px-4 flex-1 flex flex-col">
-                  <div className="h-10"></div>
+                  <div className="h-16"></div>
                   <div className="border-b-2 border-black w-full"></div>
-                  <div className="h-10 flex items-center justify-center font-bold text-lg">20 Valores</div>
+                  <div className="h-16 flex items-center justify-center font-bold text-lg">20 Valores</div>
                 </div>
               </div>
             </div>

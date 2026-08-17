@@ -87,10 +87,16 @@ export function Notificacoes() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="bg-slate-100 p-1">
-          <TabsTrigger value="todas" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">Todas ({notifications.length})</TabsTrigger>
-          <TabsTrigger value="nao-lidas" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">Não lidas ({unreadCount})</TabsTrigger>
-          <TabsTrigger value="lidas" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">Lidas</TabsTrigger>
+        <TabsList className="bg-slate-100 p-1 flex space-x-1 rounded-lg h-auto">
+          <TabsTrigger value="todas" className="px-4 py-2 rounded-md font-medium transition-all data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-600 hover:bg-slate-200">
+            Todas ({notifications.length})
+          </TabsTrigger>
+          <TabsTrigger value="nao-lidas" className="px-4 py-2 rounded-md font-medium transition-all data-[state=active]:bg-orange-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-600 hover:bg-slate-200">
+            Não lidas ({unreadCount})
+          </TabsTrigger>
+          <TabsTrigger value="lidas" className="px-4 py-2 rounded-md font-medium transition-all data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-600 hover:bg-slate-200">
+            Lidas
+          </TabsTrigger>
         </TabsList>
 
         {['todas', 'nao-lidas', 'lidas'].map(t => (
