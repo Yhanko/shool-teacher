@@ -43,6 +43,8 @@ interface GradeEntry {
 
 function GradeForm({ classInfo, students, subjects, onSuccess }: { classInfo: ClassInfo; students: Student[]; subjects: Subject[]; onSuccess: () => void }) {
   const [studentId, setStudentId] = useState('');
+  const [studentSearch, setStudentSearch] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [value, setValue] = useState('');
   const [term, setTerm] = useState('first');
   const [type, setType] = useState('AC');
@@ -55,6 +57,10 @@ function GradeForm({ classInfo, students, subjects, onSuccess }: { classInfo: Cl
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!studentId) {
+      alert('Por favor, pesquise e selecione um aluno válido da lista.');
+      return;
+    }
     setLoading(true);
     try {
       let finalValue = parseFloat(value);
@@ -72,7 +78,7 @@ function GradeForm({ classInfo, students, subjects, onSuccess }: { classInfo: Cl
         type,
       });
       onSuccess();
-      setStudentId(''); setValue('');
+      setStudentId(''); setStudentSearch(''); setValue('');
     } catch (err) {
       alert('Erro ao lançar nota.');
     } finally {
@@ -82,17 +88,43 @@ function GradeForm({ classInfo, students, subjects, onSuccess }: { classInfo: Cl
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
+      <div className="relative">
         <Label>Aluno</Label>
-        <select 
-          value={studentId} 
-          onChange={e => setStudentId(e.target.value)} 
-          required
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        >
-          <option value="" disabled>Selecione o aluno</option>
-          {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
+        <Input
+          type="text"
+          placeholder="Pesquisar aluno..."
+          value={studentSearch}
+          onChange={e => {
+            setStudentSearch(e.target.value);
+            setStudentId('');
+            setIsDropdownOpen(true);
+          }}
+          onFocus={() => setIsDropdownOpen(true)}
+          onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
+          className={studentId ? "border-green-500" : ""}
+          required={!studentId}
+        />
+        {isDropdownOpen && (
+          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+            {students.filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase())).length > 0 ? (
+              students.filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase())).map(s => (
+                <div 
+                  key={s.id} 
+                  className="px-3 py-2 hover:bg-slate-100 cursor-pointer text-sm text-slate-700"
+                  onClick={() => {
+                    setStudentId(s.id);
+                    setStudentSearch(s.name);
+                    setIsDropdownOpen(false);
+                  }}
+                >
+                  {s.name}
+                </div>
+              ))
+            ) : (
+              <div className="px-3 py-2 text-sm text-slate-500">Nenhum aluno encontrado</div>
+            )}
+          </div>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>

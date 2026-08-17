@@ -87,10 +87,10 @@ export function Notificacoes() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
-          <TabsTrigger value="todas">Todas ({notifications.length})</TabsTrigger>
-          <TabsTrigger value="nao-lidas">Não lidas ({unreadCount})</TabsTrigger>
-          <TabsTrigger value="lidas">Lidas</TabsTrigger>
+        <TabsList className="bg-slate-100 p-1">
+          <TabsTrigger value="todas" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">Todas ({notifications.length})</TabsTrigger>
+          <TabsTrigger value="nao-lidas" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">Não lidas ({unreadCount})</TabsTrigger>
+          <TabsTrigger value="lidas" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">Lidas</TabsTrigger>
         </TabsList>
 
         {['todas', 'nao-lidas', 'lidas'].map(t => (

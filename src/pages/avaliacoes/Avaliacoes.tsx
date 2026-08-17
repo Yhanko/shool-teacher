@@ -32,7 +32,7 @@ export function Avaliacoes() {
     classId: '',
     subjectId: '',
     questions: [
-      { text: '', score: 5, blankLines: 5 }
+      { text: '', score: '5', blankLines: 5 }
     ]
   });
 
@@ -89,7 +89,7 @@ export function Avaliacoes() {
   const addQuestion = () => {
     setFormData(prev => ({
       ...prev,
-      questions: [...prev.questions, { text: '', score: 5, blankLines: 5 }]
+      questions: [...prev.questions, { text: '', score: '5', blankLines: 5 }]
     }));
   };
 
@@ -106,11 +106,11 @@ export function Avaliacoes() {
     setFormData({ ...formData, questions: updated });
   };
 
-  const totalScore = formData.questions.reduce((acc, q) => acc + Number(q.score || 0), 0);
+  const totalScore = formData.questions.reduce((acc, q) => acc + Number(String(q.score || 0).replace(',', '.')), 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (totalScore !== 20) {
+    if (Math.abs(totalScore - 20) > 0.01) {
       toast.error(`A cotação total deve ser exatamente 20 valores. Atualmente: ${totalScore}`);
       return;
     }
@@ -311,8 +311,8 @@ export function Avaliacoes() {
             <div className="bg-slate-50 p-4 rounded-lg border space-y-4">
               <div className="flex justify-between items-center border-b pb-2">
                 <h3 className="font-semibold text-slate-700">2. Enunciado (Perguntas)</h3>
-                <div className={`font-bold ${totalScore === 20 ? 'text-green-600' : 'text-red-600'}`}>
-                  Cotação Total: {totalScore} / 20 Valores
+                <div className={`font-bold ${Math.abs(totalScore - 20) <= 0.01 ? 'text-green-600' : 'text-red-600'}`}>
+                  Cotação Total: {Number(totalScore.toFixed(2))} / 20 Valores
                 </div>
               </div>
               
@@ -330,7 +330,7 @@ export function Avaliacoes() {
                     <div className="flex gap-4 items-end">
                       <div className="w-32">
                         <Label>Cotação (Valores)</Label>
-                        <Input type="number" step="0.1" min="0" value={q.score} onChange={e => updateQuestion(i, 'score', parseFloat(e.target.value) || 0)} required />
+                        <Input type="text" inputMode="decimal" value={q.score} onChange={e => updateQuestion(i, 'score', e.target.value.replace(/[^0-9.,]/g, ''))} required />
                       </div>
                       <div className="w-48">
                         <Label>Linhas em branco (PDF)</Label>
@@ -446,9 +446,13 @@ export function Avaliacoes() {
                 <p><strong>Nome do Aluno:</strong> ___________________________________________________________</p>
                 <p className="mt-2"><strong>Nº:</strong> _______</p>
               </div>
-              <div className="border border-gray-400 p-3 w-1/4 text-center">
+              <div className="border border-gray-400 p-3 w-1/4 text-center flex flex-col">
                 <strong>Classificação:</strong>
-                <div className="mt-4 text-2xl">_____,_____</div>
+                <div className="mt-4 px-4 flex-1 flex flex-col">
+                  <div className="h-10"></div>
+                  <div className="border-b-2 border-black w-full"></div>
+                  <div className="h-10 flex items-center justify-center font-bold text-lg">20 Valores</div>
+                </div>
               </div>
             </div>
 
@@ -462,7 +466,7 @@ export function Avaliacoes() {
                   <div className="flex gap-2">
                     <div className="font-bold">{idx + 1}.</div>
                     <div className="flex-1 whitespace-pre-wrap">{q.text}</div>
-                    <div className="font-bold whitespace-nowrap ml-4">[{q.score.toFixed(1)} v]</div>
+                    <div className="font-bold whitespace-nowrap ml-4">[{Number(String(q.score || 0).replace(',', '.')).toFixed(1)} v]</div>
                   </div>
                   
                   {q.blankLines > 0 && (
