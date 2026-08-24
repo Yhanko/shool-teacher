@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { BookOpen, Download, Search, FileText, Video, Link as LinkIcon, Loader2, Plus, ExternalLink, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -172,7 +173,6 @@ export function ResourcesView() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Tem a certeza que pretende remover este recurso?')) return;
     try {
       await api.delete(`/resources/${id}`);
       toast.success('Recurso apagado com sucesso!');
@@ -396,9 +396,25 @@ export function ResourcesView() {
                       </span>
                       
                       <div className="flex gap-2">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleDelete(resource.id)} title="Remover">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" title="Remover">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Tem a certeza?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta ação não pode ser desfeita. Isto irá apagar permanentemente o recurso selecionado.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(resource.id)} className="bg-red-600 hover:bg-red-700">Apagar</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                         <Button variant="secondary" size="sm" className="h-8" onClick={async () => {
                           try {
                             const res = await fetch(resource.url);
