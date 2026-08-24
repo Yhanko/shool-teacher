@@ -195,7 +195,7 @@ export function NotasPauta() {
   const [selectedClass, setSelectedClass] = useState<ClassInfo | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<string>('');
-  const [grades, setGrades] = useState<GradeEntry[]>([]);
+  const [pautaData, setPautaData] = useState<any>(null);
   const [term, setTerm] = useState('first');
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -228,7 +228,7 @@ export function NotasPauta() {
         const subs = (fallback.data || []).map((cs: any) => cs.subject).filter(Boolean);
         setSubjects(subs);
         if (subs.length > 0) setSelectedSubject(subs[0].id);
-        else { setSelectedSubject(''); setGrades([]); }
+        else { setSelectedSubject(''); setPautaData(null); }
       }
     } catch (e) {
       try {
@@ -236,7 +236,7 @@ export function NotasPauta() {
         const subs = (fallback.data || []).map((cs: any) => cs.subject).filter(Boolean);
         setSubjects(subs);
         if (subs.length > 0) setSelectedSubject(subs[0].id);
-        else { setSelectedSubject(''); setGrades([]); }
+        else { setSelectedSubject(''); setPautaData(null); }
       } catch (e2) { console.error(e2); }
     }
   };
@@ -260,43 +260,27 @@ export function NotasPauta() {
   };
 
   const fetchGrades = async () => {
-    if (!selectedClass) return;
+    if (!selectedClass || !selectedSubject) return;
     try {
-      // Fetch grades for all students in this class
-      const studentIds = selectedClass.students?.map(s => s.id) || [];
-      const allGrades: GradeEntry[] = [];
-      for (const sid of studentIds.slice(0, 20)) {
-        try {
-          const res = await api.get(`/grades/student/${sid}/class/${selectedClass.id}`);
-          allGrades.push(...(res.data || []));
-        } catch (_) {}
-      }
-      setGrades(allGrades.filter(g => g.term === term && g.subjectId === selectedSubject));
+      const res = await api.get(`/grades/pauta/class/${selectedClass.id}/subject/${selectedSubject}`);
+      setPautaData(res.data);
     } catch (e) { console.error(e); }
   };
 
   const getStudentGradesCalc = (studentId: string) => {
-    const sg = grades.filter(g => g.studentId === studentId);
-    if (!sg.length) return null;
+    if (!pautaData || !pautaData.students) return null;
+    const s = pautaData.students.find((st: any) => st.student.id === studentId);
+    if (!s) return null;
 
-    const acGrades = sg.filter(g => g.type === 'AC');
-    const nptGrade = sg.find(g => g.type === 'NPT' || g.type === 'PT'); // Fallback for old records
-
-    const mac = acGrades.length > 0 
-      ? acGrades.reduce((s, g) => s + g.value, 0) / acGrades.length 
-      : null;
-    
-    const npt = nptGrade ? nptGrade.value : null;
-
-    let mt = null;
-    if (mac !== null && npt !== null) {
-      mt = (mac + npt) / 2;
-    }
-
-    return { 
-      mac: mac !== null ? mac.toFixed(1) : '—', 
-      npt: npt !== null ? npt.toFixed(1) : '—', 
-      mt: mt !== null ? mt.toFixed(1) : null 
+    const termData = s.terms[term];
+    return {
+      mac: termData.mac !== null ? termData.mac.toFixed(1) : '—',
+      npt: termData.npt !== null ? termData.npt.toFixed(1) : '—',
+      mt: termData.mt !== null ? termData.mt.toFixed(1) : null,
+      mfd: s.final.mfd !== null ? s.final.mfd.toFixed(1) : null,
+      menc: s.final.menc !== null ? s.final.menc.toFixed(1) : null,
+      nee: s.final.nee !== null ? s.final.nee.toFixed(1) : null,
+      neo: s.final.neo !== null ? s.final.neo.toFixed(1) : null
     };
   };
 
@@ -465,20 +449,42 @@ export function NotasPauta() {
                       <TableHead>MAC</TableHead>
                       <TableHead>NPT</TableHead>
                       <TableHead>MT Final</TableHead>
+                      {term === 'third' && pautaData?.classInfo?.isExamClass && (
+                        <>
+                          <TableHead>NEE</TableHead>
+                          {pautaData?.subjectInfo?.isPortuguese && <TableHead>NEO</TableHead>}
+                          <TableHead>MENC</TableHead>
+                        </>
+                      )}
+                      {term === 'third' && <TableHead>MFD (Final)</TableHead>}
                       <TableHead>Estado</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {(selectedClass.students || []).map(student => {
-                      const calc = getStudentGradesCalc(student.id);
-                      const status = getStatus(calc ? calc.mt : null);
+                    {(pautaData?.students || []).map((studentData: any) => {
+                      const calc = getStudentGradesCalc(studentData.student.id);
+                      const status = getStatus(term === 'third' ? (calc ? calc.mfd : null) : (calc ? calc.mt : null));
                       return (
-                        <TableRow key={student.id}>
-                          <TableCell className="font-medium">{student.name}</TableCell>
+                        <TableRow key={studentData.student.id}>
+                          <TableCell className="font-medium">{studentData.student.name}</TableCell>
                           <TableCell>{calc ? calc.mac : '—'}</TableCell>
                           <TableCell>{calc ? calc.npt : '—'}</TableCell>
                           <TableCell className="font-bold text-lg">{calc && calc.mt ? calc.mt : '—'}</TableCell>
+                          {term === 'third' && pautaData?.classInfo?.isExamClass && (
+                            <>
+                              <TableCell>{calc && calc.nee !== '—' ? calc.nee : '—'}</TableCell>
+                              {pautaData?.subjectInfo?.isPortuguese && (
+                                <TableCell>{calc && calc.neo !== '—' ? calc.neo : '—'}</TableCell>
+                              )}
+                              <TableCell>{calc && calc.menc !== '—' ? calc.menc : '—'}</TableCell>
+                            </>
+                          )}
+                          {term === 'third' && (
+                            <TableCell className="font-bold text-blue-600 text-lg">
+                              {calc && calc.mfd ? calc.mfd : '—'}
+                            </TableCell>
+                          )}
                           <TableCell><Badge variant={status.color}>{status.label}</Badge></TableCell>
                           <TableCell className="text-right">
                             <Button size="sm" variant="ghost"><Edit className="w-4 h-4" /></Button>
@@ -486,7 +492,7 @@ export function NotasPauta() {
                         </TableRow>
                       );
                     })}
-                    {(!selectedClass.students || selectedClass.students.length === 0) && (
+                    {(!pautaData?.students || pautaData.students.length === 0) && (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                           Nenhum aluno matriculado nesta turma.

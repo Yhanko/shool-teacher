@@ -114,8 +114,20 @@ export function ResourcesView() {
   const fetchResources = async () => {
     setLoading(true);
     try {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+      const formatUrl = (url: string) => {
+        if (!url) return '';
+        if (url.startsWith('/')) return `${baseUrl}${url}`;
+        if (!url.startsWith('http')) return `https://${url}`;
+        return url;
+      };
+
       const res = await api.get('/resources');
-      setResources(res.data || []);
+      const formattedResources = (res.data || []).map((r: any) => ({
+        ...r,
+        url: formatUrl(r.url)
+      }));
+      setResources(formattedResources);
     } catch (e) {
       console.error('Failed to fetch resources', e);
     } finally {

@@ -18,7 +18,7 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && window.location.pathname !== "/") {
       Cookies.remove("yhanko_teacher_token", { path: '/' });
       Cookies.remove("yhanko_teacher_user", { path: '/' });
       window.location.href = "/";
