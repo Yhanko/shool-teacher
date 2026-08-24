@@ -117,14 +117,9 @@ export function ResourcesView() {
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
       const formatUrl = (url: string) => {
         if (!url) return '';
-        let finalUrl = url;
-        if (url.startsWith('/')) finalUrl = `${baseUrl}${url}`;
-        else if (!url.startsWith('http')) finalUrl = `https://${url}`;
-        
-        if (finalUrl.includes('res.cloudinary.com') && finalUrl.includes('/upload/') && !finalUrl.includes('fl_attachment')) {
-            finalUrl = finalUrl.replace('/upload/', '/upload/fl_attachment/');
-        }
-        return finalUrl;
+        if (url.startsWith('/')) return `${baseUrl}${url}`;
+        if (!url.startsWith('http')) return `https://${url}`;
+        return url;
       };
 
       const res = await api.get('/resources');
@@ -404,11 +399,25 @@ export function ResourcesView() {
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleDelete(resource.id)} title="Remover">
                           <Trash2 className="w-4 h-4" />
                         </Button>
-                        <Button variant="secondary" size="sm" className="h-8" asChild>
-                          <a href={resource.url} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="w-4 h-4 mr-2" />
-                            Acessar
-                          </a>
+                        <Button variant="secondary" size="sm" className="h-8" onClick={async () => {
+                          try {
+                            const res = await fetch(resource.url);
+                            if (!res.ok) throw new Error('Failed to fetch file');
+                            const blob = await res.blob();
+                            const blobUrl = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = blobUrl;
+                            a.download = resource.title + (resource.type === 'pdf' ? '.pdf' : '');
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(blobUrl);
+                          } catch (error) {
+                            window.open(resource.url, '_blank');
+                          }
+                        }}>
+                          <Download className="w-4 h-4 mr-2" />
+                          Acessar
                         </Button>
                       </div>
                     </div>
