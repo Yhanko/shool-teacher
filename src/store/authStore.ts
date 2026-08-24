@@ -7,6 +7,10 @@ interface User {
   email: string;
   role: string;
   institutionId: string;
+  institution?: {
+    name: string;
+    [key: string]: any;
+  };
   employeeProfile?: {
     photoUrl?: string;
     phone?: string;

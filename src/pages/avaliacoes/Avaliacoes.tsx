@@ -426,7 +426,7 @@ export function Avaliacoes() {
             <div className="text-center mb-6 border-b-2 border-black pb-4">
               <h1 className="text-2xl font-bold uppercase">República de Angola</h1>
               <h2 className="text-xl">Ministério da Educação</h2>
-              <h3 className="text-lg mt-2">{exam.institution?.name || 'Escola Secundária'}</h3>
+              <h3 className="text-lg mt-2">{exam.institution?.name || user?.institution?.name || 'Escola Secundária'}</h3>
             </div>
             
             <div className="mb-6 border border-gray-400 p-4 font-serif">

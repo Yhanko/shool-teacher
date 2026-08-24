@@ -117,9 +117,14 @@ export function ResourcesView() {
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
       const formatUrl = (url: string) => {
         if (!url) return '';
-        if (url.startsWith('/')) return `${baseUrl}${url}`;
-        if (!url.startsWith('http')) return `https://${url}`;
-        return url;
+        let finalUrl = url;
+        if (url.startsWith('/')) finalUrl = `${baseUrl}${url}`;
+        else if (!url.startsWith('http')) finalUrl = `https://${url}`;
+        
+        if (finalUrl.includes('res.cloudinary.com') && finalUrl.includes('/upload/') && !finalUrl.includes('fl_attachment')) {
+            finalUrl = finalUrl.replace('/upload/', '/upload/fl_attachment/');
+        }
+        return finalUrl;
       };
 
       const res = await api.get('/resources');

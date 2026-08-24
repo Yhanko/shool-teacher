@@ -19,6 +19,7 @@ interface ClassInfo {
   capacity?: number;
   teachers?: { id: string; name: string }[];
   _count?: { students: number };
+  students?: any[];
 }
 
 export function Dashboard() {
@@ -50,14 +51,14 @@ export function Dashboard() {
     fetchData();
   }, [user]);
 
-  const totalStudents = classes.reduce((acc, c) => acc + (c._count?.students || 0), 0);
+  const totalStudents = classes.reduce((acc, c) => acc + (c.students?.length || c._count?.students || 0), 0);
   const totalCapacity = classes.reduce((acc, c) => acc + (c.capacity || 0), 0);
   const occupancyRate = totalCapacity > 0 ? Math.round((totalStudents / totalCapacity) * 100) : 0;
 
   // Build chart data from classes
   const chartData = classes.slice(0, 5).map(c => ({
     turma: c.name,
-    alunos: c._count?.students || 0,
+    alunos: c.students?.length || c._count?.students || 0,
   }));
 
   if (loading) {
@@ -157,7 +158,7 @@ export function Dashboard() {
                   <p className="font-semibold">{c.name}</p>
                   <p className="text-sm text-muted-foreground">{c.academicLevel}</p>
                 </div>
-                <Badge variant="secondary">{c._count?.students || 0} alunos</Badge>
+                <Badge variant="secondary">{c.students?.length || c._count?.students || 0} alunos</Badge>
               </div>
             )) : (
               <p className="text-center text-muted-foreground py-8">

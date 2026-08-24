@@ -300,8 +300,9 @@ export function NotasPauta() {
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
       // Add custom header
+      const schoolName = user?.institution?.name || 'Escola';
       pdf.setFontSize(18);
-      pdf.text('YhankoEduca - Pauta de Avaliação', 14, 15);
+      pdf.text(`${schoolName} - Pauta de Avaliação`, 14, 15);
       pdf.setFontSize(12);
       const termMap: any = { first: '1º Trimestre', second: '2º Trimestre', third: '3º Trimestre' };
       pdf.text(`Turma: ${selectedClass.name} | Disciplina: ${subjects.find(s => s.id === selectedSubject)?.name || ''} | ${termMap[term]}`, 14, 23);
