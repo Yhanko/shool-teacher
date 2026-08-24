@@ -41,9 +41,15 @@ interface GradeEntry {
   createdAt: string;
 }
 
-function GradeForm({ classInfo, students, subjects, onSuccess }: { classInfo: ClassInfo; students: Student[]; subjects: Subject[]; onSuccess: () => void }) {
-  const [studentId, setStudentId] = useState('');
-  const [studentSearch, setStudentSearch] = useState('');
+function GradeForm({ classInfo, students, subjects, onSuccess, initialStudentId }: { classInfo: ClassInfo; students: Student[]; subjects: Subject[]; onSuccess: () => void; initialStudentId?: string }) {
+  const [studentId, setStudentId] = useState(initialStudentId || '');
+  const [studentSearch, setStudentSearch] = useState(() => {
+    if (initialStudentId) {
+      const s = students.find(s => s.id === initialStudentId);
+      return s ? s.name : '';
+    }
+    return '';
+  });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [value, setValue] = useState('');
   const [term, setTerm] = useState('first');
@@ -201,6 +207,7 @@ export function NotasPauta() {
   const [exporting, setExporting] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) fetchClasses();
@@ -373,7 +380,10 @@ export function NotasPauta() {
               </Button>
             </>
           )}
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <Dialog open={dialogOpen} onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setEditingStudentId(null);
+        }}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />Lançar Notas
@@ -382,11 +392,17 @@ export function NotasPauta() {
             <DialogContent className="max-w-md">
               <DialogHeader><DialogTitle>Lançar Nota</DialogTitle></DialogHeader>
               {selectedClass && (
-                <GradeForm
-                  classInfo={selectedClass}
-                  students={selectedClass.students || []}
+                <GradeForm 
+                  classInfo={selectedClass} 
+                  students={selectedClass.students || []} 
                   subjects={subjects}
-                  onSuccess={() => { setDialogOpen(false); fetchGrades(); }}
+                  initialStudentId={editingStudentId || undefined}
+                  onSuccess={() => {
+                    setDialogOpen(false);
+                    setEditingStudentId(null);
+                    fetchGrades();
+                    toast.success('Nota lançada com sucesso!');
+                  }} 
                 />
               )}
             </DialogContent>
@@ -488,7 +504,12 @@ export function NotasPauta() {
                           )}
                           <TableCell><Badge variant={status.color}>{status.label}</Badge></TableCell>
                           <TableCell className="text-right">
-                            <Button size="sm" variant="ghost"><Edit className="w-4 h-4" /></Button>
+                            <Button size="sm" variant="ghost" onClick={() => {
+                              setEditingStudentId(studentData.student.id);
+                              setDialogOpen(true);
+                            }}>
+                              <Edit className="w-4 h-4" />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       );
