@@ -76,11 +76,11 @@ export function Notificacoes() {
     }
   };
 
-  const markAsRead = async (n: AppNotification) => {
+  const markAsRead = async (n: AppNotification, markOnly: boolean = false) => {
     try {
       if (n.isScraped) {
         await api.patch(`/scraper-notifications/${n.id}/read`);
-        if (n.sourceUrl) window.open(n.sourceUrl, '_blank');
+        if (n.sourceUrl && !markOnly) window.open(n.sourceUrl, '_blank');
       } else {
         await api.patch(`/notifications/${n.id}/read`);
       }
@@ -201,7 +201,7 @@ export function Notificacoes() {
                       return (
                         <div
                           key={n.id}
-                          className={`flex items-start gap-4 p-4 hover:bg-slate-50 transition-colors cursor-pointer ${!n.isRead ? 'bg-purple-50/50' : ''}`}
+                          className={`flex items-start gap-4 p-4 hover:bg-slate-50 transition-colors cursor-pointer group ${!n.isRead ? 'bg-purple-50/50' : ''}`}
                           onClick={() => markAsRead(n)}
                         >
                           <div className={`p-2 rounded-full flex-shrink-0 ${!n.isRead ? 'bg-purple-100' : 'bg-slate-100'}`}>
@@ -224,6 +224,20 @@ export function Notificacoes() {
                               )}
                             </p>
                           </div>
+                          {!n.isRead && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                markAsRead(n, true);
+                              }}
+                            >
+                              <Check className="w-4 h-4 mr-2" /> 
+                              <span className="hidden sm:inline">Marcar Lida</span>
+                            </Button>
+                          )}
                         </div>
                       );
                     })}
