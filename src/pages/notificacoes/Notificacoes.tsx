@@ -8,19 +8,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Bell, Calendar, BookOpen, Check, Loader2, ExternalLink } from 'lucide-react';
 import api from '@/services/api/axios';
 
-interface Notification {
+interface AppNotification {
   id: string;
   title: string;
-  summary: string;
-  sourceUrl: string;
-  sourceName: string;
-  type: string; // 'NOTICIA' | 'CONCURSO' | 'SEMINARIO' | 'COMUNICADO'
+  description: string;
+  type: string;
+  priority?: string;
   isRead: boolean;
-  publishedAt: string;
+  createdAt: string;
+  
+  // Scraper only fields
+  isScraped?: boolean;
+  sourceUrl?: string;
+  sourceName?: string;
 }
 
 export function Notificacoes() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('todas');
   const [typeFilter, setTypeFilter] = useState<string>('todos');
@@ -30,9 +34,41 @@ export function Notificacoes() {
   }, []);
 
   const fetchNotifications = async () => {
+    setLoading(true);
     try {
-      const res = await api.get('/scraper-notifications');
-      setNotifications(res.data.data || []);
+      const [localRes, scraperRes] = await Promise.all([
+        api.get('/notifications').catch(() => ({ data: [] })),
+        api.get('/scraper-notifications').catch(() => ({ data: { data: [] } }))
+      ]);
+
+      const localNotes: AppNotification[] = (localRes.data || []).map((n: any) => ({
+        id: n.id,
+        title: n.title,
+        description: n.description,
+        type: n.type,
+        priority: n.priority,
+        isRead: n.isRead,
+        createdAt: n.createdAt,
+        isScraped: false
+      }));
+
+      const scraperNotes: AppNotification[] = (scraperRes.data?.data || []).map((n: any) => ({
+        id: n.id,
+        title: n.title,
+        description: n.summary,
+        type: n.type,
+        isRead: n.isRead,
+        createdAt: n.publishedAt || new Date().toISOString(),
+        isScraped: true,
+        sourceUrl: n.sourceUrl,
+        sourceName: n.sourceName
+      }));
+
+      const combined = [...localNotes, ...scraperNotes].sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+
+      setNotifications(combined);
     } catch (e) {
       console.error('Failed to load notifications', e);
     } finally {
@@ -40,18 +76,26 @@ export function Notificacoes() {
     }
   };
 
-  const markAsRead = async (id: string, url: string) => {
+  const markAsRead = async (n: AppNotification) => {
     try {
-      await api.patch(`/scraper-notifications/${id}/read`);
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
-      if (url) window.open(url, '_blank');
+      if (n.isScraped) {
+        await api.patch(`/scraper-notifications/${n.id}/read`);
+        if (n.sourceUrl) window.open(n.sourceUrl, '_blank');
+      } else {
+        await api.patch(`/notifications/${n.id}/read`);
+      }
+      setNotifications(prev => prev.map(item => item.id === n.id ? { ...item, isRead: true } : item));
     } catch (e) { console.error(e); }
   };
 
   const markAllRead = async () => {
     const unread = notifications.filter(n => !n.isRead);
     for (const n of unread) {
-      await api.patch(`/scraper-notifications/${n.id}/read`).catch(() => {});
+      if (n.isScraped) {
+        await api.patch(`/scraper-notifications/${n.id}/read`).catch(() => {});
+      } else {
+        await api.patch(`/notifications/${n.id}/read`).catch(() => {});
+      }
     }
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
   };
@@ -66,18 +110,30 @@ export function Notificacoes() {
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const getTypeIcon = (type: string) => {
-    if (type === 'SEMINARIO') return Calendar;
-    if (type === 'CONCURSO') return BookOpen;
+    if (type === 'event' || type === 'schedule' || type === 'SEMINARIO') return Calendar;
+    if (type === 'grade' || type === 'activity' || type === 'CONCURSO') return BookOpen;
     return Bell;
   };
 
   const getTypeLabel = (type: string) => {
     switch (type) {
+      case 'event': return 'Evento';
+      case 'schedule': return 'Horário';
+      case 'grade': return 'Nota';
+      case 'activity': return 'Actividade';
       case 'NOTICIA': return 'Notícia';
       case 'CONCURSO': return 'Concurso';
       case 'SEMINARIO': return 'Seminário';
       case 'COMUNICADO': return 'Comunicado';
       default: return type;
+    }
+  };
+
+  const getPriorityColor = (priority?: string) => {
+    switch (priority) {
+      case 'high': return 'destructive';
+      case 'medium': return 'secondary';
+      default: return 'outline';
     }
   };
 
@@ -87,7 +143,7 @@ export function Notificacoes() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Portal do MED</h1>
+          <h1 className="text-3xl font-bold">Notificações</h1>
           <p className="text-muted-foreground">
             {unreadCount > 0 ? `${unreadCount} não lida${unreadCount > 1 ? 's' : ''}` : 'Tudo em dia!'}
           </p>
@@ -103,6 +159,9 @@ export function Notificacoes() {
               <SelectItem value="CONCURSO">Concursos</SelectItem>
               <SelectItem value="SEMINARIO">Seminários</SelectItem>
               <SelectItem value="COMUNICADO">Comunicados</SelectItem>
+              <SelectItem value="event">Eventos da Escola</SelectItem>
+              <SelectItem value="grade">Notas e Avaliações</SelectItem>
+              <SelectItem value="schedule">Horários</SelectItem>
             </SelectContent>
           </Select>
           {unreadCount > 0 && (
@@ -143,7 +202,7 @@ export function Notificacoes() {
                         <div
                           key={n.id}
                           className={`flex items-start gap-4 p-4 hover:bg-slate-50 transition-colors cursor-pointer ${!n.isRead ? 'bg-purple-50/50' : ''}`}
-                          onClick={() => markAsRead(n.id, n.sourceUrl)}
+                          onClick={() => markAsRead(n)}
                         >
                           <div className={`p-2 rounded-full flex-shrink-0 ${!n.isRead ? 'bg-purple-100' : 'bg-slate-100'}`}>
                             <Icon className={`w-5 h-5 ${!n.isRead ? 'text-purple-600' : 'text-slate-500'}`} />
@@ -152,15 +211,17 @@ export function Notificacoes() {
                             <div className="flex items-center gap-2 flex-wrap">
                               <p className={`font-medium ${!n.isRead ? 'text-slate-900' : 'text-slate-600'}`}>{n.title}</p>
                               {!n.isRead && <Badge variant="default" className="text-xs">Nova</Badge>}
-                              <Badge variant="outline" className="text-xs">{getTypeLabel(n.type)}</Badge>
-                              <Badge variant="secondary" className="text-xs">{n.sourceName}</Badge>
+                              <Badge variant={getPriorityColor(n.priority) as any} className="text-xs">{getTypeLabel(n.type)}</Badge>
+                              {n.isScraped && <Badge variant="secondary" className="text-xs">{n.sourceName}</Badge>}
                             </div>
-                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{n.summary}</p>
+                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{n.description}</p>
                             <p className="text-xs text-muted-foreground mt-2 font-medium">
-                              {n.publishedAt ? new Date(n.publishedAt).toLocaleDateString('pt-PT') : 'Recente'}
-                              <span className="inline-flex items-center ml-4 text-indigo-600 hover:underline">
-                                Ler original <ExternalLink className="w-3 h-3 ml-1" />
-                              </span>
+                              {new Date(n.createdAt).toLocaleDateString('pt-PT')}
+                              {n.isScraped && (
+                                <span className="inline-flex items-center ml-4 text-indigo-600 hover:underline">
+                                  Ler original <ExternalLink className="w-3 h-3 ml-1" />
+                                </span>
+                              )}
                             </p>
                           </div>
                         </div>
