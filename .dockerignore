@@ -1,0 +1,40 @@
+# ==============================================================================
+# .dockerignore - Yhanko Educa (Portal do Professor - Frontend)
+# ==============================================================================
+
+# Dependências e compilações locais
+node_modules/
+dist/
+build/
+.npm/
+*.tsbuildinfo
+
+# Controle de versão e IDEs
+.git/
+.gitignore
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ambientes locais (evita vazamento de segredos na imagem)
+.env
+.env.local
+.env.development
+.env.test
+
+# Logs e diagnósticos
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Docker e infraestrutura local
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Arquivos de sistema e temporários
+.DS_Store
+Thumbs.db
