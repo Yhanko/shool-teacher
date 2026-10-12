@@ -58,28 +58,33 @@ LABEL maintainer="Yhanko Tech" \
 
 USER root
 
+# Instala curl para garantir que as ferramentas de healthcheck (curl e wget) estejam disponíveis
+RUN apk add --no-cache curl
+
 # Copia a configuração endurecida e customizada do Nginx para SPA
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copia os arquivos compilados do estágio builder para o diretório raiz do Nginx
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copia o script de entrypoint para suporte dinâmico a variáveis de ambiente em runtime
+# Copia os scripts de entrypoint e healthcheck dinâmico
 COPY docker-entrypoint.sh /docker-entrypoint.sh
+COPY docker-healthcheck.sh /docker-healthcheck.sh
 
-# Garante permissões de execução e propriedade para o usuário não-privilegiado nginx (UID 101)
-RUN chmod +x /docker-entrypoint.sh && \
-    chown -R 101:101 /usr/share/nginx/html /etc/nginx/conf.d /docker-entrypoint.sh
+# Normaliza quebras de linha CRLF para LF, adiciona permissão de execução e transfere propriedade para UID 101 (nginx)
+RUN sed -i 's/\r$//' /docker-entrypoint.sh /docker-healthcheck.sh && \
+    chmod +x /docker-entrypoint.sh /docker-healthcheck.sh && \
+    chown -R 101:101 /usr/share/nginx/html /etc/nginx/conf.d /docker-entrypoint.sh /docker-healthcheck.sh
 
 # Retorna estritamente para o usuário não-root oficial do Nginx
 USER 101
 
-# Porta não-privilegiada do container
-EXPOSE 8080
+# Portas não-privilegiadas suportadas pelo container
+EXPOSE 8080 3000
 
-# Verificação de integridade e saúde da aplicação (Healthcheck nativo e leve com wget)
+# Verificação de integridade e saúde dinâmica da aplicação
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD wget --quiet --tries=1 --spider http://127.0.0.1:8080/healthz || exit 1
+  CMD /docker-healthcheck.sh || exit 1
 
 # Define o entrypoint que lê e injeta variáveis de ambiente antes de inicializar o servidor
 ENTRYPOINT ["/docker-entrypoint.sh"]

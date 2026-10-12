@@ -26,7 +26,7 @@ services:
           cpus: "0.1"
           memory: 64M
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8080/healthz"]
+      test: ["CMD", "/docker-healthcheck.sh"]
       interval: 30s
       timeout: 5s
       retries: 3

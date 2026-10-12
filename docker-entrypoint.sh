@@ -6,11 +6,12 @@ set -e
 # Gerenciamento de variáveis de ambiente em runtime, portas dinâmicas e logs
 # ==============================================================================
 
-# 1. Configuração de Porta Dinâmica (Compatibilidade com Railway, Render, Cloud Run, etc.)
+# 1. Configuração de Porta Dinâmica (Compatibilidade com Railway, Render, Cloud Run, Coolify, etc.)
 SERVER_PORT="${PORT:-8080}"
+export PORT="${SERVER_PORT}"
 if [ "$SERVER_PORT" != "8080" ]; then
     echo "[Entrypoint] Configurando porta do Nginx para $SERVER_PORT..."
-    sed -i "s|listen 8080;|listen $SERVER_PORT;|g" /etc/nginx/conf.d/default.conf
+    sed -i -E "s|listen [0-9]+;|listen $SERVER_PORT;|g" /etc/nginx/conf.d/default.conf
 fi
 
 # 2. Injeção Dinâmica de Variáveis de Ambiente em Runtime
